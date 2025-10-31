@@ -7,6 +7,70 @@ All notable changes to the Specify CLI and templates are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.22] - 2025-10-30
+
+### Added
+
+- **🎉 MAJOR FEATURE: Bicep Validate Command (Feature 003)**
+  - End-to-end validation of generated Bicep templates
+  - Automated test environment deployment and validation workflow
+  - Multi-stage validation process with comprehensive reporting
+  
+  **Core Validation Workflow:**
+  - **Stage 1: Project Discovery** - Automatic detection of projects with Bicep templates
+  - **Stage 2: Configuration Analysis** - Parse app settings, detect secrets, build dependency graphs
+  - **Stage 3: Resource Deployment** - Deploy prerequisite resources (SQL, Storage, Key Vault) with dependency ordering
+  - **Stage 4: Key Vault Integration** - Secure secret storage with Managed Identity access
+  - **Stage 5: Application Deployment** - Deploy application infrastructure with Key Vault references
+  - **Stage 6: Endpoint Discovery** - Multi-framework endpoint detection (ASP.NET, Express, FastAPI, OpenAPI/Swagger)
+  - **Stage 7: Endpoint Testing** - Async HTTP testing with retry logic and concurrent execution
+  - **Stage 8: Automated Fixing** - Error classification and fix strategies with iterative retry
+  - **Stage 9: Validation Summary** - Comprehensive results reporting with actionable recommendations
+  
+  **Custom Validation Options:**
+  - `--endpoint-filter` - Filter endpoints by regex pattern
+  - `--methods` - Test specific HTTP methods (GET, POST, etc.)
+  - `--status-codes` - Override expected status codes
+  - `--timeout` - Custom timeout for endpoint tests (max 600s)
+  - `--skip-auth` - Skip authenticated endpoints for quick testing
+  - `--environment` - Target custom environments (default: test-corp)
+  - `--max-retries` - Configure fix retry attempts (0-10)
+  - `--verbose` - Detailed logging for troubleshooting
+  
+  **Performance Features:**
+  - HTTP connection pooling (max 50 connections, 20 keepalive)
+  - Parallel resource deployment (up to 4 concurrent)
+  - Concurrent endpoint testing (up to 10 concurrent)
+  - Project discovery caching with TTL
+  - Async/await throughout for optimal performance
+  
+  **Security Hardening:**
+  - Secret redaction filter for logs (Bearer tokens, API keys, passwords, connection strings)
+  - Managed Identity for Key Vault access (no stored credentials)
+  - Secure temp file handling
+  - Input validation for all CLI parameters
+  - Azure naming convention validation
+  
+  **Infrastructure:**
+  - 11 validation modules (1,773 lines of production code)
+  - 192 comprehensive tests (71% code coverage)
+  - PowerShell and Bash wrapper scripts
+  - GitHub Copilot command integration (`/speckit.validate`)
+  - Complete documentation suite (quickstart, user guide, troubleshooting)
+
+### Changed
+
+- Updated `pyproject.toml` to version 0.0.22
+- Enhanced endpoint tester with connection pooling
+- Improved validation session with async context manager support
+- Expanded test coverage for validation workflows
+
+### Fixed
+
+- Corrected import paths in validation test files
+- Fixed ProjectInfo API compatibility in test fixtures
+- Resolved async method calling patterns in tests
+
 ## [0.0.21] - 2025-10-22
 
 ### Added

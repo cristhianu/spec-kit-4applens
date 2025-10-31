@@ -1,0 +1,35 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "fixtures", "fixtures", "{F12727AA-ABEF-07AF-E6F0-CD96E3D9A8AF}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sample_projects", "sample_projects", "{5ECD02A8-5F49-2774-E040-5B65989501E7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dotnet-api", "tests\fixtures\sample_projects\dotnet-api\dotnet-api.csproj", "{74CC0F6E-9C71-6330-C82E-3CE540CF2354}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{74CC0F6E-9C71-6330-C82E-3CE540CF2354}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{74CC0F6E-9C71-6330-C82E-3CE540CF2354}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{74CC0F6E-9C71-6330-C82E-3CE540CF2354}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{74CC0F6E-9C71-6330-C82E-3CE540CF2354}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{F12727AA-ABEF-07AF-E6F0-CD96E3D9A8AF} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{5ECD02A8-5F49-2774-E040-5B65989501E7} = {F12727AA-ABEF-07AF-E6F0-CD96E3D9A8AF}
+		{74CC0F6E-9C71-6330-C82E-3CE540CF2354} = {5ECD02A8-5F49-2774-E040-5B65989501E7}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E6E05B4B-3304-4852-BE85-C53EA483A1DE}
+	EndGlobalSection
+EndGlobal

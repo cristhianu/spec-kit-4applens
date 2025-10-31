@@ -227,6 +227,31 @@ var consistencyConfig = enableConsistency ? {
 properties: consistencyConfig  // Property omitted when condition false
 ```
 
+**SPECIAL CASE: Key Vault Purge Protection**
+
+```bicep
+// ❌ WRONG - Azure will REJECT with error:
+// "The property 'enablePurgeProtection' cannot be set to false"
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
+  properties: {
+    enablePurgeProtection: enablePurgeProtection ? true : false  // FAILS
+  }
+}
+
+// ✅ CORRECT - Only set property when true, otherwise use null
+param enablePurgeProtection bool = true
+
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
+  properties: {
+    enablePurgeProtection: enablePurgeProtection ? true : null  // Only set if true
+    enableSoftDelete: true  // Required
+    // ... other properties
+  }
+}
+```
+
+**Why this exception exists**: Key Vault's `enablePurgeProtection` property can only be set to `true` or omitted entirely. Azure rejects `false` explicitly because purge protection is a one-way security control that cannot be disabled once enabled.
+
 ### ✅ REQUIRED: Cross-Reference Microsoft Learn Examples
 
 **Before generating ANY resource**, you MUST:
@@ -358,6 +383,7 @@ Copy this checklist for every template generation:
 |----------|------------------|-------------------|
 | **Loops** | `[for: [for:]]` nested loops | Flatten to single-level arrays with parent indices |
 | **Null Values** | `value ? x : null` | Conditional object construction `value ? {x} : {}` |
+| **KV Purge Protection** | `enablePurgeProtection: false` | `enablePurgeProtection ? true : null` (only set when true) |
 | **Validation** | Skip `az deployment what-if` | Run what-if BEFORE marking complete |
 | **Error Handling** | Trust Azure CLI default errors | Check `provisioningState` explicitly in PowerShell |
 | **Required Properties** | Omit throughput/capacity | Cross-reference Microsoft Learn examples |
@@ -421,6 +447,7 @@ az deployment group what-if --resource-group test-rg --template-file main.bicep 
 **COMMON FAILURE PATTERNS TO AVOID**:
 - ❌ Nested loops: `[for db in databases: [for container in db.containers: {...}]]`
 - ❌ Null properties: `maxStalenessPrefix: condition ? 100000 : null`
+- ❌ Key Vault purge protection: `enablePurgeProtection: false` (Azure rejects - use `? true : null`)
 - ❌ Missing throughput: Cosmos DB containers without `options: {throughput: 400}`
 - ❌ Zone redundancy: `isZoneRedundant: true` (requires higher quota)
 - ❌ Unchecked deployment: `$deployment = az deployment create...` without validating `provisioningState`
@@ -733,6 +760,10 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
       defaultAction: 'Deny'
     }
     enableRbacAuthorization: true
+    enableSoftDelete: true  // Required (default: true)
+    enablePurgeProtection: true  // ✅ Set to true for production
+    // NOTE: NEVER set enablePurgeProtection: false - Azure rejects this
+    // Use conditional: enablePurgeProtection ? true : null
   }
 }
 
@@ -1711,6 +1742,9 @@ Copy this checklist for every template generation task:
 
 ### Issue: "Unable to parse request payload"
 **Fix**: Remove null values, use conditional object construction
+
+### Issue: "The property 'enablePurgeProtection' cannot be set to false"
+**Fix**: Key Vault purge protection can only be `true` or omitted. Use: `enablePurgeProtection: enablePurgeProtection ? true : null`
 
 ### Issue: "For-expressions are not supported in this context"
 **Fix**: Flatten data structure, avoid nested loops, use separate resource blocks
