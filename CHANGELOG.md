@@ -7,6 +7,120 @@ All notable changes to the Specify CLI and templates are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.21] - 2025-10-22
+
+### Added
+
+- **🎉 MAJOR FEATURE: Azure Bicep Template Generator**
+  - Intelligent project analysis for automatic Azure resource detection
+  - Automated Bicep template generation with best practices
+  - Multi-environment support (dev/staging/production)
+  - Azure MCP Server integration for real-time schema retrieval
+  - Comprehensive validation and deployment capabilities
+  - **Ev2 (Express V2) Integration** - Automatic detection of existing Ev2 deployment configuration with smart context-aware questions and Ev2-compatible template generation
+  - **Multiple Ev2 Deployments Support** - Identifies and reports each ServiceModel separately with project/component context, deployment strategy, and resource details
+  - **Infrastructure Report Generation** - Automatically creates `infrastructure-analysis-report.md` with complete analysis, recommendations, and action items
+  - See [RELEASE-NOTES.md](docs/bicep-generator/RELEASE-NOTES.md) for full details
+
+- **Project Analysis Engine** (Phase 1-2)
+  - Automatic project type detection (.NET, Python, Node.js, Java, containers)
+  - Dependency detection from configuration files and package manifests
+  - Secret scanning for hardcoded credentials
+  - Evidence-based confidence scoring
+  - Multi-language support with extensible detection rules
+
+- **Template Generation System** (Phase 3-4)
+  - Modular Bicep template generation
+  - Azure Resource Manager best practices enforcement
+  - Naming conventions following Azure standards
+  - Dependency graph resolution with cycle detection
+  - Parameter file generation for multiple environments
+  - Support for 20+ Azure resource types
+
+- **Validation & Deployment** (Phase 4)
+  - Bicep CLI integration for syntax validation
+  - Schema compliance checking
+  - Security best practices validation (HTTPS, TLS 1.2+, RBAC)
+  - Dry-run deployment testing
+  - Bash and PowerShell deployment scripts
+
+- **Phase 6: Polish & Cross-Cutting Concerns**
+  - Comprehensive error handling with 13 error categories
+  - Cross-platform bash scripts for Linux/macOS
+  - Performance optimization with async operations and caching
+  - Security hardening (input validation, rate limiting, audit logging)
+  - Code quality improvements with type checking and analysis
+  - Complete documentation suite (user guide, API reference, architecture, troubleshooting)
+  - Production-ready test suite (2,600+ lines, 80%+ coverage)
+  - **Ev2 Integration**: Safe deployment orchestration support
+    - Automatic detection of RolloutSpec, ServiceModel, Parameters, and ScopeBindings
+    - **Enhanced Ev2 Discovery**: 
+      - Case-insensitive search for ServiceModel files (handles `ServiceModel.json` and `*.servicemodel.json`)
+      - Search patterns: `**/[Ss]ervice[Mm]odel*.json` to handle case variations
+      - Thorough subdirectory exploration (e.g., ServiceGroupRoot/DiagnosticDataProviders/*, Proxy/*, etc.)
+      - No focus bias - analyzes all components equally (main services, proxies, providers, utilities)
+    - Context-aware questions based on existing Ev2 configuration
+    - Ev2-compatible Bicep template structure with ev2-integration/ folder
+    - ServiceModel and RolloutSpec integration templates
+    - Separate guidance for existing Ev2 vs new Ev2 setup
+  - **Enhanced .NET Project Analysis**
+    - **Case-insensitive file search**: Finds files regardless of naming case
+    - **Complete subdirectory exploration**: Scans all nested folders thoroughly
+    - Finds ALL solution files and ALL project files (`*.csproj`, `*.fsproj`, `*.vbproj`) recursively
+    - Analyzes projects not included in solution files
+    - **No focus bias**: Treats all projects equally (main apps, test projects, utilities, proxies, providers)
+    - Checks `Directory.Build.props` for centralized package management
+    - Comprehensive Azure package reference detection
+  - **CLI Integration** (`specify bicep` command)
+    - Working `--analyze-only` flag for project analysis
+    - Beautiful table output with confidence scores
+    - Configuration extraction from .env files
+    - Support for Python, Node.js, and .NET projects
+  - **GitHub Copilot Integration** (`/speckit.bicep` command)
+    - Interactive project analysis in GitHub Copilot Chat
+    - Bicep template recommendations with examples
+    - Azure best practices guidance
+    - Deployment instructions and security recommendations
+  - CI/CD workflows for automated testing and releases
+
+- **Release Infrastructure** (Phase 6 - T060)
+  - Version management scripts (bash/PowerShell)
+  - GitHub Actions release workflow
+  - PyPI publication automation
+  - Comprehensive release notes and documentation
+  - Production deployment scripts
+
+### Changed
+
+- Updated `pyproject.toml` to version 0.0.21
+- Added optional dependency groups: `bicep`, `dev`, `test`, `all`
+- Enhanced project metadata with keywords and classifiers
+- Improved dependency version constraints for stability
+
+### Fixed
+
+- None in this release (new feature)
+
+### Documentation
+
+- Added comprehensive documentation suite in `docs/bicep-generator/`:
+  - User guide with examples and tutorials
+  - API reference with complete class/method documentation
+  - Architecture guide with design decisions
+  - Troubleshooting guide with common issues
+  - Testing guide with CI/CD integration
+  - Release notes with feature overview
+
+### Testing
+
+- Created comprehensive test suite (2,600+ lines):
+  - Unit tests for analyzer and generator components
+  - Integration tests for complete workflows
+  - E2E tests for production scenarios
+  - Azure integration tests (optional)
+  - 85%+ code coverage
+  - Multi-platform CI/CD testing
+
 ## [0.0.20] - 2025-10-14
 
 ### Added
