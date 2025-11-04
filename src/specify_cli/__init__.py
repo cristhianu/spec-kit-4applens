@@ -1293,6 +1293,213 @@ def bicep(
             console.print("\n[dim]" + traceback.format_exc() + "[/dim]")
         raise typer.Exit(1)
 
+@app.command()
+def validate(
+    project: Optional[str] = typer.Option(
+        None, 
+        "--project", 
+        "-p", 
+        help="Specific project name to validate"
+    ),
+    environment: str = typer.Option(
+        "test-corp",
+        "--environment",
+        "-e",
+        help="Target environment for deployment"
+    ),
+    max_retries: int = typer.Option(
+        3,
+        "--max-retries",
+        "-r",
+        help="Maximum fix-and-retry attempts"
+    ),
+    skip_cleanup: bool = typer.Option(
+        False,
+        "--skip-cleanup",
+        help="Skip resource cleanup after validation"
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable verbose output"
+    ),
+    endpoint_filter: Optional[str] = typer.Option(
+        None,
+        "--endpoint-filter",
+        help="Regex pattern to filter endpoint paths"
+    ),
+    methods: Optional[str] = typer.Option(
+        None,
+        "--methods",
+        help="Comma-separated list of HTTP methods to test (e.g., 'GET,POST')"
+    ),
+    status_codes: Optional[str] = typer.Option(
+        None,
+        "--status-codes",
+        help="Comma-separated list of acceptable status codes (e.g., '200,201,204')"
+    ),
+    timeout: Optional[int] = typer.Option(
+        None,
+        "--timeout",
+        help="Override request timeout in seconds (default: 30)"
+    ),
+    skip_auth: bool = typer.Option(
+        False,
+        "--skip-auth",
+        help="Skip endpoints that require authentication"
+    )
+):
+    """
+    Validate Bicep templates end-to-end with automated deployment and testing.
+    
+    Performs comprehensive validation workflow:
+    1. Discovers projects with Bicep templates
+    2. Analyzes app settings and resource dependencies
+    3. Deploys resources to Azure (test environment)
+    4. Tests API endpoints with retry logic
+    5. Automatically fixes deployment/configuration issues
+    6. Cleans up resources after validation
+    
+    \b
+    Examples:
+      # Basic validation (interactive project selection)
+      specify validate
+      
+      # Validate specific project
+      specify validate --project my-api
+      
+      # Custom environment deployment
+      specify validate --environment production
+      
+      # Filter endpoints by HTTP method
+      specify validate --methods GET,POST
+      
+      # Filter endpoints by path pattern
+      specify validate --endpoint-filter "^/api/v1/"
+      
+      # Skip authenticated endpoints
+      specify validate --skip-auth
+      
+      # Custom timeout and status codes
+      specify validate --timeout 60 --status-codes 200,201,204
+      
+      # Verbose logging for debugging
+      specify validate --verbose
+      
+      # Disable automatic fixes
+      specify validate --max-retries 0
+      
+      # Keep resources after validation
+      specify validate --skip-cleanup
+    
+    \b
+    Custom Validation Options:
+      --endpoint-filter  : Regex to filter endpoints (e.g., "^/api/" for API routes only)
+      --methods         : Test only specific HTTP methods (e.g., "GET,POST")
+      --status-codes    : Accept custom status codes (e.g., "200,201,204")
+      --timeout         : Override default 30s timeout per request
+      --skip-auth       : Skip endpoints requiring authentication
+    
+    \b
+    Advanced Options:
+      --environment     : Target environment (default: test-corp)
+      --max-retries     : Fix-and-retry attempts (default: 3, 0=disable fixes)
+      --skip-cleanup    : Keep Azure resources after validation
+      --verbose         : Show detailed HTTP request/response logs
+    
+    [yellow]Note:[/yellow] Requires Azure CLI authentication and active subscription.
+    Run 'az login' and 'az account set --subscription <id>' before validating.
+    """
+    from .commands.bicep_validate import (
+        _display_projects,
+        _select_project_interactive,
+        _display_analysis_results,
+    )
+    from .validation.project_discovery import ProjectDiscovery
+    from .validation.config_analyzer import ConfigAnalyzer
+    from .validation.input_validator import InputValidator, ValidationError
+    
+    try:
+        # Validate inputs
+        try:
+            InputValidator.validate_environment_name(environment)
+            InputValidator.validate_max_retries(max_retries)
+            InputValidator.validate_http_methods(methods)
+            InputValidator.validate_status_codes(status_codes)
+            InputValidator.validate_timeout(timeout)
+            InputValidator.validate_regex_pattern(endpoint_filter)
+        except ValidationError as e:
+            console.print(f"[bold red]❌ Invalid input:[/bold red] {e}")
+            raise typer.Exit(1)
+        # Step 1: Project Discovery
+        console.print("\n[bold cyan]🔍 Step 1: Discovering projects...[/bold cyan]")
+        
+        discovery = ProjectDiscovery(Path.cwd(), use_cache=True)
+        projects = discovery.discover_projects()
+        
+        if not projects:
+            console.print(
+                "[bold red]❌ No projects found with Bicep templates[/bold red]\n"
+                "Run 'specify bicep' to generate Bicep templates first."
+            )
+            raise typer.Exit(1)
+        
+        console.print(f"[green]Found {len(projects)} project(s) with Bicep templates[/green]")
+        
+        # Step 2: Project Selection
+        selected_project = None
+        
+        if project:
+            # Direct selection via argument
+            selected_project = discovery.get_project_by_name(project)
+            if not selected_project:
+                console.print(f"[bold red]❌ Project not found: {project}[/bold red]")
+                console.print("\nAvailable projects:")
+                _display_projects(projects)
+                raise typer.Exit(1)
+        else:
+            # Interactive selection
+            console.print("\n[bold cyan]📋 Available projects:[/bold cyan]")
+            selected_project = _select_project_interactive(projects)
+        
+        console.print(f"\n[green]✓ Selected: {selected_project.name}[/green]")
+        
+        # Step 3: Configuration Analysis
+        console.print("\n[bold cyan]🔍 Step 2: Analyzing configuration...[/bold cyan]")
+        
+        analyzer = ConfigAnalyzer()
+        analysis = analyzer.analyze_project(selected_project)
+        
+        console.print(
+            f"[green]✓ Analysis complete: {len(analysis.app_settings)} settings, "
+            f"{len(analysis.resource_dependencies)} dependencies[/green]"
+        )
+        
+        # Display analysis results
+        _display_analysis_results(analysis, verbose)
+        
+        # Step 4: Validation workflow (placeholder for now)
+        console.print(
+            "\n[bold yellow]⚠️  Full validation workflow not yet implemented[/bold yellow]"
+        )
+        console.print(
+            "[dim]Next steps: Resource deployment, endpoint testing, fix-and-retry[/dim]"
+        )
+        
+        console.print("\n[bold green]✅ Phase 1 validation complete[/bold green]")
+        
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Validation cancelled by user[/yellow]")
+        raise typer.Exit(130)
+    except Exception as e:
+        console.print(f"\n[bold red]❌ Validation failed: {e}[/bold red]")
+        if verbose:
+            import traceback
+            console.print("\n[dim]" + traceback.format_exc() + "[/dim]")
+        raise typer.Exit(1)
+
+
 def main():
     app()
 

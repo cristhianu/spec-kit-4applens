@@ -4,6 +4,8 @@ Auto-generated from all feature plans. Last updated: 2025-10-21
 
 ## Active Technologies
 - PowerShell 5.1+ and Python 3.11+ (for MCP Server integration) + Azure MCP Server, Azure CLI, Bicep CLI, PowerShell modules (Az.Resources, Az.Profile) (002-bicep-generator-command)
+- Python 3.11+ (leveraging existing Specify CLI infrastructure) + Azure CLI, httpx (async HTTP), azure-identity, azure-keyvault-secrets, pathlib, AST parsers (003-bicep-validate-command)
+- File system for project discovery and template analysis, Azure Key Vault for secrets, Azure Resource Manager for deployments (003-bicep-validate-command)
 
 ## Project Structure
 ```
@@ -18,8 +20,9 @@ cd src; pytest; ruff check .
 PowerShell 5.1+ and Python 3.11+ (for MCP Server integration): Follow standard conventions
 
 ## Recent Changes
+- 003-bicep-validate-command: Added Python 3.11+ (leveraging existing Specify CLI infrastructure) + Azure CLI, httpx (async HTTP), azure-identity, azure-keyvault-secrets, pathlib, AST parsers
+- 003-bicep-validate-command: Added Python 3.11+ (leveraging existing Specify CLI infrastructure) + Azure CLI, httpx (async HTTP), azure-identity, azure-keyvault-secrets, pathlib, AST parsers
 - 002-bicep-generator-command: Added PowerShell 5.1+ and Python 3.11+ (for MCP Server integration) + Azure MCP Server, Azure CLI, Bicep CLI, PowerShell modules (Az.Resources, Az.Profile)
-- Ev2 Integration: Added automatic detection and integration with Microsoft Express V2 (Ev2) safe deployment orchestration
 
 <!-- MANUAL ADDITIONS START -->
 ## Bicep Generator - Ev2 Integration

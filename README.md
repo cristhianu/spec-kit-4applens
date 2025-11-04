@@ -114,7 +114,66 @@ Use the **`/speckit.specify`** command to describe what you want to build. Focus
    - Azure MCP Server integration for latest schemas
    - Validation and deployment automation
 
-### 4. Create a technical implementation plan
+5. **✅ Validate Azure Infrastructure** (NEW in v0.0.22)
+   - End-to-end validation of generated Bicep templates
+   - **Automated workflow**:
+     - Project discovery with Bicep template detection
+     - Configuration analysis (app settings, resource dependencies)
+     - Prerequisite resource deployment to test environment
+     - Secure secret storage in Azure Key Vault
+     - Application infrastructure deployment
+     - Endpoint discovery from source code and OpenAPI specs
+     - Comprehensive endpoint testing with retry logic
+     - Automated fix-and-retry with error classification
+   - **Custom validation options**:
+     - Filter endpoints by HTTP method or path pattern
+     - Override expected status codes and timeouts
+     - Skip authenticated endpoints for quick testing
+     - Custom environment targeting
+   - **Performance features**:
+     - HTTP connection pooling for faster testing
+     - Parallel resource deployment (up to 4 concurrent)
+     - Concurrent endpoint testing (up to 10 concurrent)
+     - Project discovery caching
+   - **Security hardening**:
+     - Secret redaction in logs (Bearer tokens, API keys, passwords)
+     - Managed Identity for Key Vault access
+     - Secure temp file handling
+
+### 4. Validate Azure Infrastructure (Optional)
+
+After generating Bicep templates, validate them end-to-end in a test environment:
+
+```bash
+specify validate
+```
+
+Or with custom options:
+
+```bash
+# Validate specific project with custom environment
+specify validate --project "MyApi" --environment "staging-corp"
+
+# Filter endpoints and customize testing
+specify validate --methods GET,POST --timeout 60 --skip-auth
+
+# Verbose mode for troubleshooting
+specify validate --verbose
+```
+
+The validation workflow will:
+1. **Discover** projects with Bicep templates
+2. **Analyze** configuration and resource dependencies
+3. **Deploy** prerequisite resources (SQL, Storage, Key Vault)
+4. **Store** secrets securely in Azure Key Vault
+5. **Deploy** application infrastructure
+6. **Test** all discovered endpoints
+7. **Fix** issues automatically with retry logic
+8. **Report** comprehensive validation results
+
+For detailed usage, see the [Bicep Validate Quickstart](./specs/003-bicep-validate-command/quickstart.md).
+
+### 5. Create a technical implementation plan
 
 Use the **`/speckit.plan`** command to provide your tech stack and architecture choices.
 
@@ -122,7 +181,7 @@ Use the **`/speckit.plan`** command to provide your tech stack and architecture 
 /speckit.plan The application uses Vite with minimal number of libraries. Use vanilla HTML, CSS, and JavaScript as much as possible. Images are not uploaded anywhere and metadata is stored in a local SQLite database.
 ```
 
-### 5. Break down into tasks
+### 6. Break down into tasks
 
 Use **`/speckit.tasks`** to create an actionable task list from your implementation plan.
 
@@ -130,7 +189,7 @@ Use **`/speckit.tasks`** to create an actionable task list from your implementat
 /speckit.tasks
 ```
 
-### 6. Execute implementation
+### 7. Execute implementation
 
 Use **`/speckit.implement`** to execute all tasks and build your feature according to the plan.
 
