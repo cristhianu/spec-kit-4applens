@@ -58,4 +58,28 @@ bicep-templates/
 - **No Ev2**: Offers two paths (direct Azure CLI deployment or Ev2 setup with templates)
 
 See `EV2-INTEGRATION-SUMMARY.md` for complete details.
+
+## Local Development Setup
+
+When testing changes locally, use the install-local-dev scripts:
+
+**PowerShell**: `scripts/powershell/install-local-dev.ps1`
+**Bash**: `scripts/bash/install-local-dev.sh`
+
+These scripts install the CLI in editable mode and copy prompt files to test projects.
+
+### Adding New Prompt Files
+
+**CRITICAL**: When adding new GitHub Copilot prompt files, you MUST update both install-local-dev scripts:
+
+1. Add to `$promptFiles` array (PowerShell) or `PROMPT_FILES` array (Bash)
+2. Include: filename, source directory, and command name
+3. Update "Next steps" section to list the new command
+4. Test both scripts to verify prompt files are copied
+
+Prompt file locations:
+- `.github/prompts/*.prompt.md` - GitHub Copilot commands
+- `templates/commands/*.prompt.md` - Template commands for agent generation
+
+See `scripts/README.md` for detailed contribution guidelines.
 <!-- MANUAL ADDITIONS END -->

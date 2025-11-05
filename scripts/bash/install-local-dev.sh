@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Get the current project root (where the script is being run from)
+PROJECT_ROOT="$(pwd)"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -94,7 +97,7 @@ fi
 SPEC_KIT_PATH=$(cd "$SPEC_KIT_PATH" && pwd)  # Get absolute path
 
 info "Spec Kit location: $SPEC_KIT_PATH"
-info "Current directory: $PWD"
+info "Current directory: $PROJECT_ROOT"
 echo ""
 
 # Check if pyproject.toml exists
@@ -190,43 +193,216 @@ if [[ "$SKIP_INSTALL" != "true" ]]; then
     fi
 fi
 
-# Copy GitHub Copilot prompt file
+# Copy GitHub Copilot prompt files
 if [[ "$SKIP_PROMPT_FILE" != "true" ]]; then
     echo ""
     echo -e "${CYAN}Setting up GitHub Copilot integration...${NC}"
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     
-    PROMPT_SOURCE_PATH="$SPEC_KIT_PATH/.github/prompts/speckit.bicep.prompt.md"
-    PROMPT_DEST_DIR=".github/prompts"
-    PROMPT_DEST_PATH="$PROMPT_DEST_DIR/speckit.bicep.prompt.md"
+    PROMPT_DEST_DIR="$PROJECT_ROOT/.github/prompts"
     
-    if [[ ! -f "$PROMPT_SOURCE_PATH" ]]; then
-        warning "Prompt file not found at: $PROMPT_SOURCE_PATH"
-        info "Skipping prompt file installation"
-    else
-        # Create directory if it doesn't exist
-        if [[ ! -d "$PROMPT_DEST_DIR" ]]; then
-            info "Creating directory: $PROMPT_DEST_DIR"
-            mkdir -p "$PROMPT_DEST_DIR"
+    # Create directory if it doesn't exist
+    if [[ ! -d "$PROMPT_DEST_DIR" ]]; then
+        info "Creating directory: $PROMPT_DEST_DIR"
+        mkdir -p "$PROMPT_DEST_DIR"
+    fi
+    
+    # Define prompt files to copy
+    declare -a PROMPT_FILES=(
+        "speckit.bicep.prompt.md:.github/prompts:/speckit.bicep"
+        "speckit.validate.prompt.md:templates/commands:/speckit.validate"
+    )
+    
+    COPIED_FILES=0
+    FAILED_FILES=0
+    
+    for prompt_entry in "${PROMPT_FILES[@]}"; do
+        IFS=':' read -r file_name source_dir command <<< "$prompt_entry"
+        PROMPT_SOURCE_PATH="$SPEC_KIT_PATH/$source_dir/$file_name"
+        PROMPT_DEST_PATH="$PROMPT_DEST_DIR/$file_name"
+        
+        if [[ ! -f "$PROMPT_SOURCE_PATH" ]]; then
+            warning "Prompt file not found at: $PROMPT_SOURCE_PATH"
+            ((FAILED_FILES++))
+            continue
         fi
         
         # Copy the file
-        info "Copying prompt file..."
+        info "Copying $file_name..."
         cp "$PROMPT_SOURCE_PATH" "$PROMPT_DEST_PATH"
         
         # Verify
         if [[ -f "$PROMPT_DEST_PATH" ]]; then
-            success "GitHub Copilot prompt file installed"
-            info "Location: $PROMPT_DEST_PATH"
-            echo ""
-            echo -e "You can now use ${GREEN}/speckit.bicep${NC} in GitHub Copilot Chat!"
+            success "Installed: $file_name"
+            ((COPIED_FILES++))
         else
-            warning "Failed to copy prompt file"
+            warning "Failed to copy: $file_name"
+            ((FAILED_FILES++))
+        fi
+    done
+    
+    # Copy learnings database
+    echo ""
+    echo -e "${CYAN}Setting up Bicep learnings database...${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    
+    LEARNINGS_SOURCE_PATH="$SPEC_KIT_PATH/.specify/learnings/bicep-learnings.md"
+    LEARNINGS_DEST_DIR="$PROJECT_ROOT/.specify/learnings"
+    LEARNINGS_DEST_PATH="$LEARNINGS_DEST_DIR/bicep-learnings.md"
+    
+    if [[ ! -f "$LEARNINGS_SOURCE_PATH" ]]; then
+        warning "Learnings database not found at: $LEARNINGS_SOURCE_PATH"
+        info "Bicep commands may not work optimally without the learnings database"
+    else
+        # Create directory if it doesn't exist
+        if [[ ! -d "$LEARNINGS_DEST_DIR" ]]; then
+            info "Creating directory: $LEARNINGS_DEST_DIR"
+            mkdir -p "$LEARNINGS_DEST_DIR"
+        fi
+        
+        # Copy the file
+        info "Copying bicep-learnings.md..."
+        cp "$LEARNINGS_SOURCE_PATH" "$LEARNINGS_DEST_PATH"
+        
+        # Verify
+        if [[ -f "$LEARNINGS_DEST_PATH" ]]; then
+            success "Learnings database installed"
+            info "Location: $LEARNINGS_DEST_PATH"
+            
+            # Count entries
+            ENTRY_COUNT=$(grep -c '\[.*T.*Z\]' "$LEARNINGS_DEST_PATH" || echo "0")
+            info "Database contains $ENTRY_COUNT learning entries"
+        else
+            warning "Failed to copy learnings database"
         fi
     fi
+    
+    # Copy validation script
+    echo ""
+    echo -e "${CYAN}Setting up Bicep validation script...${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    
+    SCRIPTS_DEST_DIR="$PROJECT_ROOT/scripts"
+    
+    # Create directory if it doesn't exist
+    if [[ ! -d "$SCRIPTS_DEST_DIR" ]]; then
+        info "Creating directory: $SCRIPTS_DEST_DIR"
+        mkdir -p "$SCRIPTS_DEST_DIR"
+    fi
+    
+    # Copy validation script
+    VALIDATION_SCRIPT_SOURCE="$SPEC_KIT_PATH/scripts/bicep_validate_architecture.py"
+    VALIDATION_SCRIPT_DEST="$SCRIPTS_DEST_DIR/bicep_validate_architecture.py"
+    
+    if [[ ! -f "$VALIDATION_SCRIPT_SOURCE" ]]; then
+        warning "Validation script not found at: $VALIDATION_SCRIPT_SOURCE"
+    else
+        info "Copying bicep_validate_architecture.py..."
+        cp "$VALIDATION_SCRIPT_SOURCE" "$VALIDATION_SCRIPT_DEST"
+        
+        if [[ -f "$VALIDATION_SCRIPT_DEST" ]]; then
+            success "Validation script installed"
+            info "Location: $VALIDATION_SCRIPT_DEST"
+        else
+            warning "Failed to copy validation script"
+        fi
+    fi
+    
+    # Copy validation script documentation
+    VALIDATION_DOC_SOURCE="$SPEC_KIT_PATH/scripts/README-VALIDATION-SCRIPT.md"
+    VALIDATION_DOC_DEST="$SCRIPTS_DEST_DIR/README-VALIDATION-SCRIPT.md"
+    
+    if [[ -f "$VALIDATION_DOC_SOURCE" ]]; then
+        info "Copying README-VALIDATION-SCRIPT.md..."
+        cp "$VALIDATION_DOC_SOURCE" "$VALIDATION_DOC_DEST"
+        
+        if [[ -f "$VALIDATION_DOC_DEST" ]]; then
+            success "Validation documentation installed"
+        fi
+    fi
+    
+    # Copy wrapper scripts
+    echo ""
+    echo -e "${CYAN}Setting up wrapper scripts...${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    
+    # Define wrapper scripts to copy
+    declare -a WRAPPER_SCRIPTS=(
+        "bicep-validate-wrapper.ps1:scripts/powershell:$SCRIPTS_DEST_DIR/powershell"
+        "bicep-validate.ps1:scripts/powershell:$SCRIPTS_DEST_DIR/powershell"
+        "bicep-validate-wrapper.sh:scripts/bash:$SCRIPTS_DEST_DIR/bash"
+        "bicep-validate.sh:scripts/bash:$SCRIPTS_DEST_DIR/bash"
+    )
+    
+    COPIED_WRAPPERS=0
+    FAILED_WRAPPERS=0
+    
+    for wrapper_entry in "${WRAPPER_SCRIPTS[@]}"; do
+        IFS=':' read -r file_name source_dir dest_dir <<< "$wrapper_entry"
+        WRAPPER_SOURCE_PATH="$SPEC_KIT_PATH/$source_dir/$file_name"
+        WRAPPER_DEST_PATH="$dest_dir/$file_name"
+        
+        if [[ ! -f "$WRAPPER_SOURCE_PATH" ]]; then
+            warning "Wrapper script not found at: $WRAPPER_SOURCE_PATH"
+            ((FAILED_WRAPPERS++))
+            continue
+        fi
+        
+        # Create directory if it doesn't exist
+        if [[ ! -d "$dest_dir" ]]; then
+            mkdir -p "$dest_dir"
+        fi
+        
+        # Copy the file
+        info "Copying $file_name..."
+        cp "$WRAPPER_SOURCE_PATH" "$WRAPPER_DEST_PATH"
+        
+        # Make shell scripts executable
+        if [[ "$file_name" == *.sh ]]; then
+            chmod +x "$WRAPPER_DEST_PATH"
+        fi
+        
+        # Verify
+        if [[ -f "$WRAPPER_DEST_PATH" ]]; then
+            success "Installed: $file_name"
+            ((COPIED_WRAPPERS++))
+        else
+            warning "Failed to copy: $file_name"
+            ((FAILED_WRAPPERS++))
+        fi
+    done
+    
+    # Summary
+    echo ""
+    if [[ $COPIED_FILES -gt 0 ]]; then
+        success "GitHub Copilot prompt files installed ($COPIED_FILES/${#PROMPT_FILES[@]})"
+        info "Location: $PROMPT_DEST_DIR"
+        echo ""
+        echo -e "${CYAN}Available commands in GitHub Copilot Chat:${NC}"
+        for prompt_entry in "${PROMPT_FILES[@]}"; do
+            IFS=':' read -r file_name source_dir command <<< "$prompt_entry"
+            PROMPT_DEST_PATH="$PROMPT_DEST_DIR/$file_name"
+            if [[ -f "$PROMPT_DEST_PATH" ]]; then
+                echo -e "  • ${GREEN}$command${NC}"
+            fi
+        done
+    fi
+    
+    if [[ $COPIED_WRAPPERS -gt 0 ]]; then
+        echo ""
+        success "Wrapper scripts installed ($COPIED_WRAPPERS/${#WRAPPER_SCRIPTS[@]})"
+        info "Location: $SCRIPTS_DEST_DIR"
+    fi
+    
+    if [[ $FAILED_FILES -gt 0 ]] || [[ $FAILED_WRAPPERS -gt 0 ]]; then
+        warning "Some files could not be installed"
+    fi
 else
-    info "Skipping GitHub Copilot prompt file (--skip-prompt-file flag)"
+    info "Skipping GitHub Copilot prompt files (--skip-prompt-file flag)"
 fi
 
 # Display next steps
@@ -237,13 +413,18 @@ echo -e "${CYAN}================================================${NC}"
 echo ""
 echo -e "${CYAN}Next steps:${NC}"
 echo ""
-echo -e "  ${NC}1. Test the CLI command:${NC}"
+echo -e "  ${NC}1. Test the CLI commands:${NC}"
 echo -e "     ${YELLOW}specify bicep --analyze-only${NC}"
+echo -e "     ${YELLOW}specify bicep validate${NC}"
 echo ""
 echo -e "  ${NC}2. Use in GitHub Copilot Chat:${NC}"
 echo -e "     ${YELLOW}/speckit.bicep${NC}"
+echo -e "     ${YELLOW}/speckit.validate${NC}"
 echo ""
-echo -e "  ${NC}3. Make changes to the source code:${NC}"
+echo -e "  ${NC}3. Validate architecture compliance:${NC}"
+echo -e "     ${YELLOW}python3 scripts/bicep_validate_architecture.py main.bicep${NC}"
+echo ""
+echo -e "  ${NC}4. Make changes to the source code:${NC}"
 echo -e "     ${YELLOW}Changes in $SPEC_KIT_PATH${NC}"
 echo -e "     ${YELLOW}will be immediately reflected (no reinstall needed)${NC}"
 echo ""
@@ -251,14 +432,14 @@ echo ""
 # Show project info
 echo -e "${CYAN}Project Information:${NC}"
 echo -e "  ${GRAY}Source: $SPEC_KIT_PATH${NC}"
-echo -e "  ${GRAY}Target: $PWD${NC}"
+echo -e "  ${GRAY}Target: $PROJECT_ROOT${NC}"
 echo ""
 
 # Check for requirements.txt or package.json
 HAS_REQUIREMENTS=false
 HAS_PACKAGE_JSON=false
-[[ -f "requirements.txt" ]] && HAS_REQUIREMENTS=true
-[[ -f "package.json" ]] && HAS_PACKAGE_JSON=true
+[[ -f "$PROJECT_ROOT/requirements.txt" ]] && HAS_REQUIREMENTS=true
+[[ -f "$PROJECT_ROOT/package.json" ]] && HAS_PACKAGE_JSON=true
 
 if [[ "$HAS_REQUIREMENTS" == "true" ]] || [[ "$HAS_PACKAGE_JSON" == "true" ]]; then
     echo -e "${CYAN}Detected project files:${NC}"

@@ -173,6 +173,85 @@ The validation workflow will:
 
 For detailed usage, see the [Bicep Validate Quickstart](./specs/003-bicep-validate-command/quickstart.md).
 
+### 5. Self-Improving Infrastructure with Learnings Database (NEW in v0.1.0)
+
+The Bicep Learnings Database is a shared knowledge base that makes your infrastructure generation and validation smarter over time by learning from past deployments and errors.
+
+**Key Features:**
+- **Automated Learning Capture**: Validation failures automatically captured as learnings
+- **Self-Improving Generation**: `/speckit.bicep` applies lessons from past deployments
+- **Consistent Validation**: `/speckit.validate` validates against same architectural patterns
+- **Semantic Deduplication**: 60% similarity threshold prevents duplicate learnings
+- **Category Organization**: 8 categories (Security, Compliance, Networking, Data Services, Compute, Configuration, Performance, Operations)
+
+**How It Works:**
+
+```bash
+# 1. Generate Bicep with learnings applied automatically
+specify bicep
+
+# 2. Validate deployment (captures errors as learnings)
+specify validate
+
+# 3. Next generation uses learnings to prevent same errors
+specify bicep  # Now smarter - applies lessons learned
+```
+
+**Learnings Database Location**: `.specify/learnings/bicep-learnings.md`
+
+**Example Learning Entry:**
+```
+[2025-11-03T10:00:00Z] Security Azure Storage → Public network access enabled by default → Set publicNetworkAccess: 'Disabled' and use Private Endpoints
+```
+
+**Manual Curation:**
+```bash
+# View current learnings
+cat .specify/learnings/bicep-learnings.md
+
+# Add custom learning (follow format strictly)
+echo "[2025-11-03T10:00:00Z] Security Azure SQL → SQL auth enabled → Use Managed Identity with Azure AD authentication" >> .specify/learnings/bicep-learnings.md
+
+# Validate format
+specify validate  # Will check learnings database integrity
+```
+
+**Performance:**
+- Automatic category filtering at >250 entries
+- <2s loading time for optimal performance
+- Entry count warnings at 200+ entries
+
+For detailed usage, see the [Learnings Database Specification](./specs/004-bicep-learnings-database/spec.md).
+
+#### Architectural Compliance Validation
+
+For automated SFI (Secure Future Initiative) compliance checking:
+
+```bash
+# Validate Bicep template compliance
+python scripts/bicep-validate-architecture.py main.bicep
+
+# Detailed output with line numbers
+python scripts/bicep-validate-architecture.py main.bicep --verbose
+
+# JSON output for CI/CD integration
+python scripts/bicep-validate-architecture.py main.bicep --json
+```
+
+The script validates 8 critical security and architecture patterns:
+- ✅ No Azure Front Door unless explicitly requested
+- ✅ No Network Security Perimeter (use Private Endpoints)
+- ✅ Private Endpoints for data services
+- ✅ `publicNetworkAccess: 'Disabled'` on all data resources
+- ✅ VNet integration for compute services
+- ✅ Managed Identity for authentication
+- ✅ TLS 1.2+ enforcement
+- ✅ HTTPS-only for web services
+
+Exit codes: `0` (pass), `1` (violations found), `2` (script error)
+
+For complete documentation, see [Validation Script README](./scripts/README-VALIDATION-SCRIPT.md).
+
 ### 5. Create a technical implementation plan
 
 Use the **`/speckit.plan`** command to provide your tech stack and architecture choices.

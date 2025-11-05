@@ -47,6 +47,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Get the current project root (where the script is being run from)
+$projectRoot = Get-Location
+
 # Colors for output
 function Write-Success { Write-Host "✅ $args" -ForegroundColor Green }
 function Write-Info { Write-Host "ℹ️  $args" -ForegroundColor Cyan }
@@ -69,8 +72,8 @@ if (-not $specKitPath) {
     exit 1
 }
 
-Write-Info "Spec Kit location: $specKitPath"
-Write-Info "Current directory: $PWD"
+info "Spec Kit location: $specKitPath"
+Write-Info "Current directory: $projectRoot"
 Write-Host ""
 
 # Check if pyproject.toml exists
@@ -172,45 +175,234 @@ if (-not $skipInstall) {
     }
 }
 
-# Copy GitHub Copilot prompt file
+# Copy GitHub Copilot prompt files
 if (-not $SkipPromptFile) {
     Write-Host ""
     Write-Host "Setting up GitHub Copilot integration..." -ForegroundColor Cyan
     Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
     Write-Host ""
     
-    $promptSourcePath = Join-Path $specKitPath ".github\prompts\speckit.bicep.prompt.md"
-    $promptDestDir = ".github\prompts"
-    $promptDestPath = Join-Path $promptDestDir "speckit.bicep.prompt.md"
+    $promptDestDir = Join-Path $projectRoot ".github\prompts"
     
-    if (-not (Test-Path $promptSourcePath)) {
-        Write-Warning "Prompt file not found at: $promptSourcePath"
-        Write-Info "Skipping prompt file installation"
-    } else {
-        # Create directory if it doesn't exist
-        if (-not (Test-Path $promptDestDir)) {
-            Write-Info "Creating directory: $promptDestDir"
-            New-Item -ItemType Directory -Force -Path $promptDestDir | Out-Null
+    # Create directory if it doesn't exist
+    if (-not (Test-Path $promptDestDir)) {
+        Write-Info "Creating directory: $promptDestDir"
+        New-Item -ItemType Directory -Force -Path $promptDestDir | Out-Null
+    }
+    
+    # Define prompt files to copy
+    $promptFiles = @(
+        @{
+            Name = "speckit.bicep.prompt.md"
+            Source = ".github\prompts"
+            Command = "/speckit.bicep"
+        },
+        @{
+            Name = "speckit.validate.prompt.md"
+            Source = "templates\commands"
+            Command = "/speckit.validate"
+        }
+    )
+    
+    $copiedFiles = 0
+    $failedFiles = 0
+    
+    foreach ($promptFile in $promptFiles) {
+        $promptSourcePath = Join-Path $specKitPath $promptFile.Source $promptFile.Name
+        $promptDestPath = Join-Path $promptDestDir $promptFile.Name
+        
+        if (-not (Test-Path $promptSourcePath)) {
+            Write-Warning "Prompt file not found at: $promptSourcePath"
+            $failedFiles++
+            continue
         }
         
         # Copy the file
-        Write-Info "Copying prompt file..."
+        Write-Info "Copying $($promptFile.Name)..."
         Copy-Item $promptSourcePath -Destination $promptDestPath -Force
         
         # Verify
         if (Test-Path $promptDestPath) {
-            Write-Success "GitHub Copilot prompt file installed"
-            Write-Info "Location: $promptDestPath"
-            Write-Host ""
-            Write-Host "You can now use " -NoNewline
-            Write-Host "/speckit.bicep" -ForegroundColor Green -NoNewline
-            Write-Host " in GitHub Copilot Chat!"
+            Write-Success "Installed: $($promptFile.Name)"
+            $copiedFiles++
         } else {
-            Write-Warning "Failed to copy prompt file"
+            Write-Warning "Failed to copy: $($promptFile.Name)"
+            $failedFiles++
         }
     }
+    
+    # Copy learnings database
+    Write-Host ""
+    Write-Host "Setting up Bicep learnings database..." -ForegroundColor Cyan
+    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+    Write-Host ""
+    
+    $learningsSourcePath = Join-Path $specKitPath ".specify\learnings\bicep-learnings.md"
+    $learningsDestDir = Join-Path $projectRoot ".specify\learnings"
+    $learningsDestPath = Join-Path $learningsDestDir "bicep-learnings.md"
+    
+    if (-not (Test-Path $learningsSourcePath)) {
+        Write-Warning "Learnings database not found at: $learningsSourcePath"
+        Write-Info "Bicep commands may not work optimally without the learnings database"
+    } else {
+        # Create directory if it doesn't exist
+        if (-not (Test-Path $learningsDestDir)) {
+            Write-Info "Creating directory: $learningsDestDir"
+            New-Item -ItemType Directory -Force -Path $learningsDestDir | Out-Null
+        }
+        
+        # Copy the file
+        Write-Info "Copying bicep-learnings.md..."
+        Copy-Item $learningsSourcePath -Destination $learningsDestPath -Force
+        
+        # Verify
+        if (Test-Path $learningsDestPath) {
+            Write-Success "Learnings database installed"
+            Write-Info "Location: $learningsDestPath"
+            
+            # Count entries
+            $content = Get-Content $learningsDestPath -Raw
+            $entryCount = ([regex]::Matches($content, '\[[\d-]+T[\d:]+Z\]')).Count
+            Write-Info "Database contains $entryCount learning entries"
+        } else {
+            Write-Warning "Failed to copy learnings database"
+        }
+    }
+    
+    # Copy validation script
+    Write-Host ""
+    Write-Host "Setting up Bicep validation script..." -ForegroundColor Cyan
+    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+    Write-Host ""
+    
+    $scriptsDestDir = Join-Path $projectRoot "scripts"
+    
+    # Create directory if it doesn't exist
+    if (-not (Test-Path $scriptsDestDir)) {
+        Write-Info "Creating directory: $scriptsDestDir"
+        New-Item -ItemType Directory -Force -Path $scriptsDestDir | Out-Null
+    }
+    
+    # Copy validation script
+    $validationScriptSource = Join-Path $specKitPath "scripts\bicep_validate_architecture.py"
+    $validationScriptDest = Join-Path $scriptsDestDir "bicep_validate_architecture.py"
+    
+    if (-not (Test-Path $validationScriptSource)) {
+        Write-Warning "Validation script not found at: $validationScriptSource"
+    } else {
+        Write-Info "Copying bicep_validate_architecture.py..."
+        Copy-Item $validationScriptSource -Destination $validationScriptDest -Force
+        
+        if (Test-Path $validationScriptDest) {
+            Write-Success "Validation script installed"
+            Write-Info "Location: $validationScriptDest"
+        } else {
+            Write-Warning "Failed to copy validation script"
+        }
+    }
+    
+    # Copy validation script documentation
+    $validationDocSource = Join-Path $specKitPath "scripts\README-VALIDATION-SCRIPT.md"
+    $validationDocDest = Join-Path $scriptsDestDir "README-VALIDATION-SCRIPT.md"
+    
+    if (Test-Path $validationDocSource) {
+        Write-Info "Copying README-VALIDATION-SCRIPT.md..."
+        Copy-Item $validationDocSource -Destination $validationDocDest -Force
+        
+        if (Test-Path $validationDocDest) {
+            Write-Success "Validation documentation installed"
+        }
+    }
+    
+    # Copy wrapper scripts
+    Write-Host ""
+    Write-Host "Setting up wrapper scripts..." -ForegroundColor Cyan
+    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+    Write-Host ""
+    
+    # Define wrapper scripts to copy
+    $wrapperScripts = @(
+        @{
+            Name = "bicep-validate-wrapper.ps1"
+            SourceDir = "scripts\powershell"
+            DestDir = Join-Path $scriptsDestDir "powershell"
+        },
+        @{
+            Name = "bicep-validate.ps1"
+            SourceDir = "scripts\powershell"
+            DestDir = Join-Path $scriptsDestDir "powershell"
+        },
+        @{
+            Name = "bicep-validate-wrapper.sh"
+            SourceDir = "scripts\bash"
+            DestDir = Join-Path $scriptsDestDir "bash"
+        },
+        @{
+            Name = "bicep-validate.sh"
+            SourceDir = "scripts\bash"
+            DestDir = Join-Path $scriptsDestDir "bash"
+        }
+    )
+    
+    $copiedWrappers = 0
+    $failedWrappers = 0
+    
+    foreach ($wrapper in $wrapperScripts) {
+        $wrapperSourcePath = Join-Path $specKitPath $wrapper.SourceDir $wrapper.Name
+        $wrapperDestPath = Join-Path $wrapper.DestDir $wrapper.Name
+        
+        if (-not (Test-Path $wrapperSourcePath)) {
+            Write-Warning "Wrapper script not found at: $wrapperSourcePath"
+            $failedWrappers++
+            continue
+        }
+        
+        # Create directory if it doesn't exist
+        if (-not (Test-Path $wrapper.DestDir)) {
+            New-Item -ItemType Directory -Force -Path $wrapper.DestDir | Out-Null
+        }
+        
+        # Copy the file
+        Write-Info "Copying $($wrapper.Name)..."
+        Copy-Item $wrapperSourcePath -Destination $wrapperDestPath -Force
+        
+        # Verify
+        if (Test-Path $wrapperDestPath) {
+            Write-Success "Installed: $($wrapper.Name)"
+            $copiedWrappers++
+        } else {
+            Write-Warning "Failed to copy: $($wrapper.Name)"
+            $failedWrappers++
+        }
+    }
+    
+    # Summary
+    Write-Host ""
+    if ($copiedFiles -gt 0) {
+        Write-Success "GitHub Copilot prompt files installed ($copiedFiles/$($promptFiles.Count))"
+        Write-Info "Location: $promptDestDir"
+        Write-Host ""
+        Write-Host "Available commands in GitHub Copilot Chat:" -ForegroundColor Cyan
+        foreach ($promptFile in $promptFiles) {
+            $destPath = Join-Path $promptDestDir $promptFile.Name
+            if (Test-Path $destPath) {
+                Write-Host "  • " -NoNewline
+                Write-Host $promptFile.Command -ForegroundColor Green
+            }
+        }
+    }
+    
+    if ($copiedWrappers -gt 0) {
+        Write-Host ""
+        Write-Success "Wrapper scripts installed ($copiedWrappers/$($wrapperScripts.Count))"
+        Write-Info "Location: $scriptsDestDir"
+    }
+    
+    if ($failedFiles -gt 0 -or $failedWrappers -gt 0) {
+        Write-Warning "Some files could not be installed"
+    }
 } else {
-    Write-Info "Skipping GitHub Copilot prompt file (--SkipPromptFile flag)"
+    Write-Info "Skipping GitHub Copilot prompt files (--SkipPromptFile flag)"
 }
 
 # Display next steps
@@ -221,13 +413,18 @@ Write-Host "================================================" -ForegroundColor C
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  1. Test the CLI command:" -ForegroundColor White
+Write-Host "  1. Test the CLI commands:" -ForegroundColor White
 Write-Host "     specify bicep --analyze-only" -ForegroundColor Yellow
+Write-Host "     specify bicep validate" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "  2. Use in GitHub Copilot Chat:" -ForegroundColor White
 Write-Host "     /speckit.bicep" -ForegroundColor Yellow
+Write-Host "     /speckit.validate" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "  3. Make changes to the source code:" -ForegroundColor White
+Write-Host "  3. Validate architecture compliance:" -ForegroundColor White
+Write-Host "     python scripts/bicep_validate_architecture.py main.bicep" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "  4. Make changes to the source code:" -ForegroundColor White
 Write-Host "     Changes in $specKitPath" -ForegroundColor Yellow
 Write-Host "     will be immediately reflected (no reinstall needed)" -ForegroundColor Yellow
 Write-Host ""
@@ -235,12 +432,12 @@ Write-Host ""
 # Show project info
 Write-Host "Project Information:" -ForegroundColor Cyan
 Write-Host "  Source: $specKitPath" -ForegroundColor DarkGray
-Write-Host "  Target: $PWD" -ForegroundColor DarkGray
+Write-Host "  Target: $projectRoot" -ForegroundColor DarkGray
 Write-Host ""
 
 # Check for requirements.txt or package.json
-$hasRequirements = Test-Path "requirements.txt"
-$hasPackageJson = Test-Path "package.json"
+$hasRequirements = Test-Path (Join-Path $projectRoot "requirements.txt")
+$hasPackageJson = Test-Path (Join-Path $projectRoot "package.json")
 
 if ($hasRequirements -or $hasPackageJson) {
     Write-Host "Detected project files:" -ForegroundColor Cyan

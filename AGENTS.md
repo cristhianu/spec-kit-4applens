@@ -13,6 +13,11 @@ The toolkit supports multiple AI coding assistants, allowing teams to use their 
 ## General practices
 
 - Any changes to `__init__.py` for the Specify CLI require a version rev in `pyproject.toml` and addition of entries to `CHANGELOG.md`.
+- **When adding new GitHub Copilot prompt files** (`.github/prompts/*.prompt.md` or `templates/commands/*.prompt.md`), update both install-local-dev scripts:
+  - `scripts/powershell/install-local-dev.ps1`
+  - `scripts/bash/install-local-dev.sh`
+  - Add the new prompt file to the `$promptFiles` / `PROMPT_FILES` array
+  - Update the "Next steps" section to mention the new command
 
 ## Adding New Agent Support
 
