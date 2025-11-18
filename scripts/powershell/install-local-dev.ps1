@@ -72,7 +72,7 @@ if (-not $specKitPath) {
     exit 1
 }
 
-info "Spec Kit location: $specKitPath"
+Write-Info "Spec Kit location: $specKitPath"
 Write-Info "Current directory: $projectRoot"
 Write-Host ""
 

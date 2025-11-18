@@ -29,7 +29,7 @@ $ARGUMENTS
 
 **Priority Rules**:
 1. `$ARGUMENTS` instructions override default recommendations in this prompt
-2. Security requirements (Private Endpoints, NSP, NAT Gateway) remain MANDATORY unless explicitly overridden in `$ARGUMENTS`
+2. Security requirements (Private Endpoints, NSG, NAT Gateway) remain MANDATORY unless explicitly overridden in `$ARGUMENTS`
 3. Validation rules (syntax checks, what-if simulation) remain MANDATORY for all templates
 4. If `$ARGUMENTS` conflict with security requirements, ask for clarification before proceeding
 
@@ -368,8 +368,7 @@ catch {
 
 **Anti-Patterns (MUST avoid)**:
 - ❌ **Azure Front Door**: Only include when explicitly requested (not default)
-- ❌ **Network Security Perimeter**: Use Private Endpoints instead
-- ❌ **Service Endpoints**: Replace with Private Endpoints for data exfiltration protection
+- ❌ **Service Endpoints**: Replace with Private Endpoints for data exfiltration protection (use NSG rules for network filtering)
 
 **Validation checklist** (from sfi-patterns.md):
 ```
@@ -380,7 +379,7 @@ catch {
 - [ ] TLS 1.2+ enforced (minimumTlsVersion: 'TLS1_2')
 - [ ] App Services have VNet integration (virtualNetworkSubnetId + vnetRouteAllEnabled)
 - [ ] No Azure Front Door (unless explicitly requested)
-- [ ] No Network Security Perimeter resources
+- [ ] Network Security Groups (NSG) configured for subnet-level filtering
 ```
 
 **Learning Entry Examples**:
@@ -430,7 +429,7 @@ catch {
    - ✅ **Private Endpoints Required**: Key Vault, Cosmos DB, SQL DB, Storage Accounts MUST have:
      - `publicNetworkAccess: 'Disabled'`
      - Private Link/Private Endpoint (PL/PE) configuration
-     - Network Security Perimeter (NSP) association in Transition mode
+     - Network Security Groups (NSG) with deny-by-default rules
    - ✅ **NAT Gateway**: All VNets and subnets MUST use NAT Gateway for outbound connectivity
    - ✅ **Container App Environments**: Must have dedicated subnet with attached NAT Gateway
    - ✅ **No Public Access**: Storage, databases, and vaults MUST NOT be publicly accessible
@@ -975,9 +974,9 @@ Look for patterns like:
 
 **Your proposal should include**:
 1. Detected Azure resources table (resource type, module file, purpose, security config)
-2. Mandatory security architecture diagram (VNet topology, subnets, NAT Gateway, NSP)
+2. Mandatory security architecture diagram (VNet topology, subnets, NAT Gateway, NSG)
 3. List of all Bicep modules to generate (organized by deployment phase)
-4. Example module showing secure configuration (e.g., Key Vault with PE + NSP)
+4. Example module showing secure configuration (e.g., Key Vault with PE + NSG)
 5. Multi-environment configuration strategy (dev, staging, production)
 6. Deployment order and dependencies
 7. Security compliance checklist
@@ -1018,8 +1017,8 @@ Based on my analysis of your project, here's the complete secure Bicep infrastru
 | Resource Type | Module File | Purpose | Security Configuration |
 |---------------|-------------|---------|------------------------|
 | Azure App Service | `app-service.bicep` | [Detected purpose] | VNet integration + Managed Identity |
-| Azure Storage Account | `storage.bicep` | [Detected purpose] | Private Endpoint + NSP + publicNetworkAccess: Disabled |
-| Azure Key Vault | `key-vault.bicep` | Secrets management | Private Endpoint + NSP + publicNetworkAccess: Disabled |
+| Azure Storage Account | `storage.bicep` | [Detected purpose] | Private Endpoint + NSG + publicNetworkAccess: Disabled |
+| Azure Key Vault | `key-vault.bicep` | Secrets management | Private Endpoint + NSG + publicNetworkAccess: Disabled |
 | [Other resources...] | [...] | [...] | [...] |
 
 ### 🔐 Mandatory Security Architecture
@@ -1041,15 +1040,15 @@ Virtual Network (10.0.0.0/16)
 ```
 
 **2. Private Endpoint Requirements** (MANDATORY for data services)
-- ✅ Key Vault: `publicNetworkAccess: 'Disabled'` + Private Endpoint + NSP
-- ✅ Storage Account: `publicNetworkAccess: 'Disabled'` + Private Endpoint + NSP
-- ✅ Cosmos DB: `publicNetworkAccess: 'Disabled'` + Private Endpoint + NSP (if detected)
-- ✅ SQL Database: `publicNetworkAccess: 'Disabled'` + Private Endpoint + NSP (if detected)
+- ✅ Key Vault: `publicNetworkAccess: 'Disabled'` + Private Endpoint + NSG
+- ✅ Storage Account: `publicNetworkAccess: 'Disabled'` + Private Endpoint + NSG
+- ✅ Cosmos DB: `publicNetworkAccess: 'Disabled'` + Private Endpoint + NSG (if detected)
+- ✅ SQL Database: `publicNetworkAccess: 'Disabled'` + Private Endpoint + NSG (if detected)
 
-**3. Network Security Perimeter (NSP) - Transition Mode**
-- NSP resource created in Transition mode (formerly Learning mode)
-- All private endpoint resources associated with NSP
-- Perimeter profiles configured for access rule learning
+**3. Network Security Groups (NSG) - Subnet Filtering**
+- NSG created for each subnet with deny-by-default rules
+- Allow rules for required service traffic only
+- NSG flow logs enabled for network monitoring
 
 **4. NAT Gateway Configuration**
 - NAT Gateway deployed in each region
@@ -1062,10 +1061,10 @@ Virtual Network (10.0.0.0/16)
 **Phase 1: Network Foundation** (CRITICAL - must be first)
 1. `modules/nat-gateway.bicep` - NAT Gateway for outbound connectivity
 2. `modules/vnet.bicep` - VNet with 4 subnets (app, data, container, pe)
-3. `modules/nsp.bicep` - Network Security Perimeter in Transition mode
+3. `modules/nsg.bicep` - Network Security Groups with deny-by-default rules
 
 **Phase 2: Security & Identity**
-4. `modules/key-vault.bicep` - Key Vault with PE + NSP + publicNetworkAccess disabled
+4. `modules/key-vault.bicep` - Key Vault with PE + NSG + publicNetworkAccess disabled
 5. `modules/managed-identity.bicep` - User-assigned managed identity for services
 
 **Phase 3: Traffic Management & Security** (MANDATORY)
@@ -1075,9 +1074,9 @@ Virtual Network (10.0.0.0/16)
 9. `modules/waf-policy.bicep` - Web Application Firewall policy (OWASP protection)
 
 **Phase 4: Data Services** (with private endpoints)
-10. `modules/storage.bicep` - Storage with PE + NSP + publicNetworkAccess disabled
-11. `modules/cosmos-db.bicep` (if detected) - Cosmos DB with PE + NSP
-12. `modules/sql-database.bicep` (if detected) - SQL DB with PE + NSP
+10. `modules/storage.bicep` - Storage with PE + NSG + publicNetworkAccess disabled
+11. `modules/cosmos-db.bicep` (if detected) - Cosmos DB with PE + NSG
+12. `modules/sql-database.bicep` (if detected) - SQL DB with PE + NSG
 
 **Phase 5: Compute Services**
 13. `modules/app-service-plan.bicep` - App Service Plan
@@ -1098,7 +1097,7 @@ param location string = resourceGroup().location
 param namePrefix string
 param environment string
 param privateEndpointSubnetId string
-param nspId string
+param nsgId string
 
 var keyVaultName = '${namePrefix}-${environment}-kv'
 
@@ -1137,17 +1136,8 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-11-01' = {
   }
 }
 
-// NSP Association (Transition mode)
-resource nspAssociation 'Microsoft.Network/networkSecurityPerimeters/resourceAssociations@2023-08-01' = {
-  name: '${keyVaultName}-nsp-assoc'
-  properties: {
-    privateLinkResource: { id: keyVault.id }
-    profile: {
-      accessRulesVersion: 1
-      accessRules: []  // Empty for Transition mode (learning)
-    }
-  }
-}
+// NSG rules are applied at the subnet level (see vnet.bicep module)
+// Private Endpoint automatically inherits NSG rules from the subnet
 
 output keyVaultId string = keyVault.id
 output keyVaultName string = keyVault.name
@@ -1214,17 +1204,17 @@ output publicIpAddress string = natPublicIp.properties.ipAddress
 ```
 NAT Gateway (Phase 1) 
     ↓
+NSG (Phase 1)
+    ↓
 VNet + Subnets (Phase 1)
     ↓
-NSP (Phase 1)
-    ↓
-Managed Identity (Phase 2) → Key Vault + PE + NSP (Phase 2)
+Managed Identity (Phase 2) → Key Vault + PE (Phase 2)
     ↓
 WAF Policy (Phase 3) → Application Gateway + WAF (Phase 3)
     ↓
 Azure Front Door (Phase 3) → Traffic Manager (Phase 3)
     ↓
-Storage + PE + NSP (Phase 4) → Databases + PE + NSP (Phase 4)
+Storage + PE (Phase 4) → Databases + PE (Phase 4)
     ↓
 App Service Plan (Phase 5) → App Service + VNet Integration (Phase 5)
     ↓
@@ -1238,7 +1228,7 @@ Container App Environment + NAT Gateway Subnet (Phase 5, if applicable)
 **All templates will enforce**:
 - ✅ No public network access for data services (Key Vault, Storage, Cosmos DB, SQL DB)
 - ✅ Private Endpoints for all data service connectivity
-- ✅ Network Security Perimeter association in Transition mode
+- ✅ Network Security Groups (NSG) with deny-by-default rules on all subnets
 - ✅ NAT Gateway for all subnet outbound traffic
 - ✅ Container App Environments with dedicated subnets + NAT Gateway
 - ✅ **Traffic Management & Load Balancing**: Azure Front Door, Application Gateway with WAF, and Traffic Manager for all web-facing workloads
@@ -3131,7 +3121,7 @@ TO:
   ✅ Syntax validation passed (az bicep build)
   ✅ Uses Microsoft.Storage/storageAccounts@2023-01-01
   ✅ Private Endpoint configuration included
-  ✅ NSP association configured
+  ✅ NSG rules applied at subnet level
   ℹ️ No warnings or issues detected
 ```
 
@@ -3592,9 +3582,9 @@ Wait for user response.
 
 **Your proposal should include**:
 1. Detected Azure resources table (resource type, module file, purpose, security config)
-2. Mandatory security architecture diagram (VNet topology, subnets, NAT Gateway, NSP)
+2. Mandatory security architecture diagram (VNet topology, subnets, NAT Gateway, NSG)
 3. List of all Bicep modules to generate (organized by deployment phase)
-4. Example module showing secure configuration (e.g., Key Vault with PE + NSP)
+4. Example module showing secure configuration (e.g., Key Vault with PE + NSG)
 5. Multi-environment configuration strategy (dev, staging, production)
 6. Deployment order and dependencies
 7. Security compliance checklist

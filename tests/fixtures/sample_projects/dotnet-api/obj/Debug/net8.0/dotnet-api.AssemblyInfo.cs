@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("dotnet-api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4b297fdb4be30d1425a1b27088907262027b3cf0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f3852468dce4856e0fb5f1da41a8b7cbc8f51ab4")]
 [assembly: System.Reflection.AssemblyProductAttribute("dotnet-api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("dotnet-api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

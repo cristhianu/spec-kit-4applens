@@ -185,18 +185,83 @@ The command will automatically analyze:
 - Resource dependency graph
 - Deployment sequence
 
-### 3. Resource Deployment
+### 3. Deployment Validation & Resource Deployment
 
-Resources are deployed in topological order:
-- Validates Bicep templates before deployment
+**CRITICAL**: Before deploying any resources, all Bicep templates MUST be validated to catch errors early and prevent deployment failures.
+
+#### 3.1. Pre-Deployment Validation (MANDATORY)
+
+For each Bicep template, execute these validation steps IN ORDER:
+
+1. **Syntax Validation**: Run `az bicep build --file <template>.bicep`
+   - Verifies Bicep syntax is correct
+   - Catches compilation errors (nested loops, invalid properties, etc.)
+   - MUST pass with zero errors before proceeding
+
+2. **What-If Deployment Simulation**: Run `az deployment group what-if`
+   - Simulates deployment without creating actual resources
+   - Catches 90% of deployment failures before they occur
+   - Detects issues like:
+     - Missing required properties
+     - Quota exceeded errors
+     - API version incompatibilities
+     - Parameter validation failures
+     - Resource name conflicts
+     - Permission issues
+   
+   **Command Template**:
+   ```bash
+   az deployment group what-if \
+       --resource-group <test-rg> \
+       --template-file <template>.bicep \
+       --parameters @<parameters>.json \
+       --verbose
+   ```
+   
+   **Success Criteria**:
+   - Command exits with code 0
+   - No critical errors or warnings in output
+   - All resource changes show expected operations (Create, Modify, NoChange)
+   
+   **If what-if fails**:
+   - Parse error message for root cause
+   - Call `/speckit.bicep` with specific error details for template fixes
+   - Re-run validation after fix
+   - DO NOT proceed to actual deployment until what-if succeeds
+
+3. **Parameter Validation**: Verify all required parameters are provided
+   - Check parameter files for completeness
+   - Validate parameter types match template expectations
+   - Ensure secure parameters use Key Vault references
+
+#### 3.2. Actual Resource Deployment
+
+Only after ALL validation steps pass, deploy resources in topological order:
 - Deploys up to 4 resources concurrently
+- Monitors deployment status with explicit `provisioningState` checks
 - Extracts connection strings from deployment outputs
 - Stores secrets in Azure Key Vault with naming convention
 
+**Deployment Command Template**:
+```bash
+az deployment group create \
+    --resource-group <test-rg> \
+    --template-file <template>.bicep \
+    --parameters @<parameters>.json \
+    --name <deployment-name>
+```
+
 **Expected Output:**
+- Pre-deployment validation results (syntax + what-if)
 - Deployment progress with status updates
 - Deployed resource IDs and outputs
 - Key Vault secret references
+- Validation summary showing all checks passed
+
+**Error Handling**:
+- If syntax validation fails → Fix template syntax, retry
+- If what-if fails → Parse error, call `/speckit.bicep` for fix, retry validation
+- If deployment fails → Capture error, attempt fix-and-retry (max 3 attempts)
 
 ### 4. Endpoint Testing
 
@@ -673,16 +738,18 @@ Create tasks based on validation findings:
 
 ## Best Practices
 
-1. **Run validation in test environments only** - Never validate against production
-2. **Review validation summary** - Check deployed resources and test results
-3. **Clean up resources** - Use default cleanup unless debugging
-4. **Monitor retry attempts** - If hitting max retries frequently, investigate root causes
-5. **Use verbose mode for debugging** - Enable when validation fails unexpectedly
-6. **Validate before production deployment** - Catch issues early in development cycle
-7. **Keep templates modular** - Easier to identify and fix validation issues
-8. **Document custom endpoints** - Use OpenAPI/Swagger for comprehensive testing
-9. **Test with realistic data** - Use representative test parameters
-10. **Review Key Vault secrets** - Verify secure values are properly stored
+1. **Always run what-if before deployment** - Catches 90% of deployment failures before they occur, saving time and resources
+2. **Run validation in test environments only** - Never validate against production
+3. **Review validation summary** - Check deployed resources and test results
+4. **Clean up resources** - Use default cleanup unless debugging
+5. **Monitor retry attempts** - If hitting max retries frequently, investigate root causes
+6. **Use verbose mode for debugging** - Enable when validation fails unexpectedly
+7. **Validate before production deployment** - Catch issues early in development cycle
+8. **Keep templates modular** - Easier to identify and fix validation issues
+9. **Document custom endpoints** - Use OpenAPI/Swagger for comprehensive testing
+10. **Test with realistic data** - Use representative test parameters
+11. **Review Key Vault secrets** - Verify secure values are properly stored
+12. **Fix what-if errors immediately** - Don't skip to deployment hoping errors will resolve
 
 ## Security Considerations
 
