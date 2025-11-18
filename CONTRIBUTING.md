@@ -44,6 +44,35 @@ On [GitHub Codespaces](https://github.com/features/codespaces) it's even simpler
 1. Push to your fork and submit a pull request
 1. Wait for your pull request to be reviewed and merged.
 
+### Quick Development Setup
+
+For testing changes locally in another project, use the automated installation scripts:
+
+**PowerShell (Windows):**
+```powershell
+# From your test project directory
+C:\path\to\spec-kit-4applens\scripts\powershell\install-local-dev.ps1
+```
+
+**Bash (Linux/macOS):**
+```bash
+# From your test project directory
+/path/to/spec-kit-4applens/scripts/bash/install-local-dev.sh
+```
+
+These scripts will:
+- Install the CLI in editable mode (`pip install -e ".[bicep]"`)
+- Copy GitHub Copilot prompt files to your test project
+- Copy the Bicep learnings database (`.specify/learnings/bicep-learnings.md`)
+- Verify the installation
+- Show next steps
+
+Changes to the source code will be immediately reflected without reinstalling.
+
+See [`scripts/README.md`](scripts/README.md) for more details.
+
+---
+
 Here are a few things you can do that will increase the likelihood of your pull request being accepted:
 
 - Follow the project's coding conventions.
@@ -62,7 +91,71 @@ When working on spec-kit:
 3. Test script functionality in the `scripts/` directory
 4. Ensure memory files (`memory/constitution.md`) are updated if major process changes are made
 
-### Testing template and command changes locally
+### Adding New GitHub Copilot Prompt Files
+
+When you add new prompt files for GitHub Copilot commands:
+
+1. **Add the prompt file** to either:
+   - `.github/prompts/*.prompt.md` (for Copilot commands)
+   - `templates/commands/*.prompt.md` (for template commands)
+
+2. **Update install-local-dev scripts** (both required):
+   - `scripts/powershell/install-local-dev.ps1`
+   - `scripts/bash/install-local-dev.sh`
+   
+3. **Add to prompt file arrays**:
+   ```powershell
+   # PowerShell: Add to $promptFiles array
+   @{
+       Name = "speckit.yourcommand.prompt.md"
+       Source = ".github\prompts"  # or "templates\commands"
+       Command = "/speckit.yourcommand"
+   }
+   ```
+   ```bash
+   # Bash: Add to PROMPT_FILES array
+   "speckit.yourcommand.prompt.md:.github/prompts:/speckit.yourcommand"
+   ```
+
+4. **Update "Next steps" section** in both scripts to list the new command
+
+5. **Test both scripts** by running them in a test project
+
+This ensures developers can immediately test new commands after running `install-local-dev`.
+
+### Adding New GitHub Copilot Prompt Files
+
+When you add new prompt files for GitHub Copilot commands:
+
+1. **Add the prompt file** to either:
+   - `.github/prompts/*.prompt.md` (for Copilot commands)
+   - `templates/commands/*.prompt.md` (for template commands)
+
+2. **Update install-local-dev scripts** (both required):
+   - `scripts/powershell/install-local-dev.ps1`
+   - `scripts/bash/install-local-dev.sh`
+   
+3. **Add to prompt file arrays**:
+   ```powershell
+   # PowerShell: Add to $promptFiles array
+   @{
+       Name = "speckit.yourcommand.prompt.md"
+       Source = ".github\prompts"  # or "templates\commands"
+       Command = "/speckit.yourcommand"
+   }
+   ```
+   ```bash
+   # Bash: Add to PROMPT_FILES array
+   "speckit.yourcommand.prompt.md:.github/prompts:/speckit.yourcommand"
+   ```
+
+4. **Update "Next steps" section** in both scripts to list the new command
+
+5. **Test both scripts** by running them in a test project
+
+This ensures developers can immediately test new commands after running `install-local-dev`.
+
+#### Testing template and command changes locally
 
 Running `uv run specify init` pulls released packages, which won’t include your local changes.  
 To test your templates, commands, and other changes locally, follow these steps:

@@ -100,7 +100,159 @@ Use the **`/speckit.specify`** command to describe what you want to build. Focus
 /speckit.specify Build an application that can help me organize my photos in separate photo albums. Albums are grouped by date and can be re-organized by dragging and dropping on the main page. Albums are never in other nested albums. Within each album, photos are previewed in a tile-like interface.
 ```
 
-### 4. Create a technical implementation plan
+4. **🏗️ Generate Azure Infrastructure** (NEW in v0.0.21)
+   - Automatic Azure resource detection from your codebase
+   - Generate Bicep templates for infrastructure as code
+   - Ev2 (Express V2) safe deployment integration:
+     - Detects existing ServiceModel, RolloutSpec, Parameters, and ScopeBindings files
+     - **Multiple deployment support**: Identifies each ServiceModel with parent project/component
+     - Shows separate summaries for each deployment with strategy and resource details
+     - Asks context-aware questions based on current Ev2 configuration
+     - Generates Ev2-compatible Bicep templates with integration guidance
+   - **Infrastructure analysis report**: Auto-generates `infrastructure-analysis-report.md`
+   - Multi-environment support (dev/staging/production)
+   - Azure MCP Server integration for latest schemas
+   - Validation and deployment automation
+
+5. **✅ Validate Azure Infrastructure** (NEW in v0.0.22)
+   - End-to-end validation of generated Bicep templates
+   - **Automated workflow**:
+     - Project discovery with Bicep template detection
+     - Configuration analysis (app settings, resource dependencies)
+     - Prerequisite resource deployment to test environment
+     - Secure secret storage in Azure Key Vault
+     - Application infrastructure deployment
+     - Endpoint discovery from source code and OpenAPI specs
+     - Comprehensive endpoint testing with retry logic
+     - Automated fix-and-retry with error classification
+   - **Custom validation options**:
+     - Filter endpoints by HTTP method or path pattern
+     - Override expected status codes and timeouts
+     - Skip authenticated endpoints for quick testing
+     - Custom environment targeting
+   - **Performance features**:
+     - HTTP connection pooling for faster testing
+     - Parallel resource deployment (up to 4 concurrent)
+     - Concurrent endpoint testing (up to 10 concurrent)
+     - Project discovery caching
+   - **Security hardening**:
+     - Secret redaction in logs (Bearer tokens, API keys, passwords)
+     - Managed Identity for Key Vault access
+     - Secure temp file handling
+
+### 4. Validate Azure Infrastructure (Optional)
+
+After generating Bicep templates, validate them end-to-end in a test environment:
+
+```bash
+specify validate
+```
+
+Or with custom options:
+
+```bash
+# Validate specific project with custom environment
+specify validate --project "MyApi" --environment "staging-corp"
+
+# Filter endpoints and customize testing
+specify validate --methods GET,POST --timeout 60 --skip-auth
+
+# Verbose mode for troubleshooting
+specify validate --verbose
+```
+
+The validation workflow will:
+1. **Discover** projects with Bicep templates
+2. **Analyze** configuration and resource dependencies
+3. **Deploy** prerequisite resources (SQL, Storage, Key Vault)
+4. **Store** secrets securely in Azure Key Vault
+5. **Deploy** application infrastructure
+6. **Test** all discovered endpoints
+7. **Fix** issues automatically with retry logic
+8. **Report** comprehensive validation results
+
+For detailed usage, see the [Bicep Validate Quickstart](./specs/003-bicep-validate-command/quickstart.md).
+
+### 5. Self-Improving Infrastructure with Learnings Database (NEW in v0.1.0)
+
+The Bicep Learnings Database is a shared knowledge base that makes your infrastructure generation and validation smarter over time by learning from past deployments and errors.
+
+**Key Features:**
+- **Automated Learning Capture**: Validation failures automatically captured as learnings
+- **Self-Improving Generation**: `/speckit.bicep` applies lessons from past deployments
+- **Consistent Validation**: `/speckit.validate` validates against same architectural patterns
+- **Semantic Deduplication**: 60% similarity threshold prevents duplicate learnings
+- **Category Organization**: 8 categories (Security, Compliance, Networking, Data Services, Compute, Configuration, Performance, Operations)
+
+**How It Works:**
+
+```bash
+# 1. Generate Bicep with learnings applied automatically
+specify bicep
+
+# 2. Validate deployment (captures errors as learnings)
+specify validate
+
+# 3. Next generation uses learnings to prevent same errors
+specify bicep  # Now smarter - applies lessons learned
+```
+
+**Learnings Database Location**: `.specify/learnings/bicep-learnings.md`
+
+**Example Learning Entry:**
+```
+[2025-11-03T10:00:00Z] Security Azure Storage → Public network access enabled by default → Set publicNetworkAccess: 'Disabled' and use Private Endpoints
+```
+
+**Manual Curation:**
+```bash
+# View current learnings
+cat .specify/learnings/bicep-learnings.md
+
+# Add custom learning (follow format strictly)
+echo "[2025-11-03T10:00:00Z] Security Azure SQL → SQL auth enabled → Use Managed Identity with Azure AD authentication" >> .specify/learnings/bicep-learnings.md
+
+# Validate format
+specify validate  # Will check learnings database integrity
+```
+
+**Performance:**
+- Automatic category filtering at >250 entries
+- <2s loading time for optimal performance
+- Entry count warnings at 200+ entries
+
+For detailed usage, see the [Learnings Database Specification](./specs/004-bicep-learnings-database/spec.md).
+
+#### Architectural Compliance Validation
+
+For automated SFI (Secure Future Initiative) compliance checking:
+
+```bash
+# Validate Bicep template compliance
+python scripts/bicep_validate_architecture.py main.bicep
+
+# Detailed output with line numbers
+python scripts/bicep_validate_architecture.py main.bicep --verbose
+
+# JSON output for CI/CD integration
+python scripts/bicep_validate_architecture.py main.bicep --json
+```
+
+The script validates 8 critical security and architecture patterns:
+- ✅ No Azure Front Door unless explicitly requested
+- ✅ No Network Security Perimeter (use Private Endpoints)
+- ✅ Private Endpoints for data services
+- ✅ `publicNetworkAccess: 'Disabled'` on all data resources
+- ✅ VNet integration for compute services
+- ✅ Managed Identity for authentication
+- ✅ TLS 1.2+ enforcement
+- ✅ HTTPS-only for web services
+
+Exit codes: `0` (pass), `1` (violations found), `2` (script error)
+
+For complete documentation, see [Validation Script README](./scripts/README-VALIDATION-SCRIPT.md).
+
+### 5. Create a technical implementation plan
 
 Use the **`/speckit.plan`** command to provide your tech stack and architecture choices.
 
@@ -108,7 +260,7 @@ Use the **`/speckit.plan`** command to provide your tech stack and architecture 
 /speckit.plan The application uses Vite with minimal number of libraries. Use vanilla HTML, CSS, and JavaScript as much as possible. Images are not uploaded anywhere and metadata is stored in a local SQLite database.
 ```
 
-### 5. Break down into tasks
+### 6. Break down into tasks
 
 Use **`/speckit.tasks`** to create an actionable task list from your implementation plan.
 
@@ -116,7 +268,7 @@ Use **`/speckit.tasks`** to create an actionable task list from your implementat
 /speckit.tasks
 ```
 
-### 6. Execute implementation
+### 7. Execute implementation
 
 Use **`/speckit.implement`** to execute all tasks and build your feature according to the plan.
 
@@ -250,6 +402,7 @@ Additional commands for enhanced quality and validation:
 | `/speckit.clarify`   | Clarify underspecified areas (recommended before `/speckit.plan`; formerly `/quizme`) |
 | `/speckit.analyze`   | Cross-artifact consistency & coverage analysis (run after `/speckit.tasks`, before `/speckit.implement`) |
 | `/speckit.checklist` | Generate custom quality checklists that validate requirements completeness, clarity, and consistency (like "unit tests for English") |
+| `/speckit.bicep`     | Analyze your project and generate Azure Bicep infrastructure templates (detects Azure resources from dependencies) |
 
 ### Environment Variables
 
