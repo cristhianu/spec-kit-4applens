@@ -63,6 +63,7 @@ C:\path\to\spec-kit-4applens\scripts\powershell\install-local-dev.ps1
 These scripts will:
 - Install the CLI in editable mode (`pip install -e ".[bicep]"`)
 - Copy GitHub Copilot prompt files to your test project
+- Copy the Bicep learnings database (`.specify/learnings/bicep-learnings.md`)
 - Verify the installation
 - Show next steps
 
@@ -89,6 +90,38 @@ When working on spec-kit:
 2. Verify templates are working correctly in `templates/` directory
 3. Test script functionality in the `scripts/` directory
 4. Ensure memory files (`memory/constitution.md`) are updated if major process changes are made
+
+### Adding New GitHub Copilot Prompt Files
+
+When you add new prompt files for GitHub Copilot commands:
+
+1. **Add the prompt file** to either:
+   - `.github/prompts/*.prompt.md` (for Copilot commands)
+   - `templates/commands/*.prompt.md` (for template commands)
+
+2. **Update install-local-dev scripts** (both required):
+   - `scripts/powershell/install-local-dev.ps1`
+   - `scripts/bash/install-local-dev.sh`
+   
+3. **Add to prompt file arrays**:
+   ```powershell
+   # PowerShell: Add to $promptFiles array
+   @{
+       Name = "speckit.yourcommand.prompt.md"
+       Source = ".github\prompts"  # or "templates\commands"
+       Command = "/speckit.yourcommand"
+   }
+   ```
+   ```bash
+   # Bash: Add to PROMPT_FILES array
+   "speckit.yourcommand.prompt.md:.github/prompts:/speckit.yourcommand"
+   ```
+
+4. **Update "Next steps" section** in both scripts to list the new command
+
+5. **Test both scripts** by running them in a test project
+
+This ensures developers can immediately test new commands after running `install-local-dev`.
 
 ## AI contributions in Spec Kit
 

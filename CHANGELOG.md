@@ -7,6 +7,75 @@ All notable changes to the Specify CLI and templates are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0] - 2025-11-03
+
+### Added
+
+- **🎉 MAJOR FEATURE: Bicep Learnings Database (Feature 004)**
+  - Shared learnings database for self-improving Bicep generation and validation
+  - Automated learning capture from deployment errors and validation failures
+  - Manual curation tools for quality control and knowledge sharing
+  - Cross-command consistency between `/speckit.bicep` and `/speckit.validate`
+  
+  **Core Learnings Features:**
+  - **Learnings Database** - Centralized knowledge base (`.specify/learnings/bicep-learnings.md`)
+    - 27 curated learnings across 8 categories (Security, Compliance, Networking, Data Services, Compute, Configuration, Performance, Operations)
+    - Format: `[Timestamp] [Category] [Context] → [Issue] → [Solution]`
+    - Semantic similarity deduplication (60% threshold using TF-IDF + Cosine Similarity)
+    - Category filtering for performance at scale (>250 entries)
+  
+  - **Self-Improving Bicep Generation** - `/speckit.bicep` loads learnings before generation
+    - Prevents recurring errors by applying lessons from past deployments
+    - Context-aware guidance based on detected Azure resources
+    - Automatic filtering to relevant categories for performance
+  
+  - **Automated Learning Capture** - `/speckit.validate` captures errors automatically
+    - Extracts learnings from deployment failures and validation errors
+    - Deduplicates using semantic similarity before saving
+    - Conflict resolution with priority tiers (Security/Compliance > Networking/Data Services > others)
+    - Error classification (structural errors captured, transient errors ignored)
+  
+  - **Manual Curation** - Tools for reviewing and refining learnings
+    - Format validation (timestamp, category, context, issue, solution)
+    - Semantic similarity checking to identify potential duplicates
+    - Quickstart guide for manual entry process
+  
+  - **Cross-Command Consistency** - Both commands reference same learnings database
+    - `/speckit.bicep` generates following learned patterns
+    - `/speckit.validate` validates against same patterns
+    - HALT behavior if learnings database missing (explicit failure per Constitution Principle III)
+  
+  **Learnings Loader Module** (`src/specify_cli/utils/learnings_loader.py`):
+  - `load_learnings_database()` - Parse markdown learnings file with error handling
+  - `format_learnings_for_prompt()` - Format learnings for AI prompt context (token limits: 500/1000/2000)
+  - `filter_learnings_by_category()` - Filter to specific categories (Security, Networking, etc.)
+  - `calculate_similarity()` - TF-IDF + Cosine Similarity for duplicate detection
+  - `check_for_duplicates()` - Semantic deduplication with configurable threshold
+  - `append_learning_to_database()` - Thread-safe append with file locking
+  
+  **Integration Points:**
+  - `.github/prompts/speckit.bicep.prompt.md` - Loads learnings before Bicep generation
+  - `templates/commands/speckit.validate.prompt.md` - Loads learnings for validation + captures new learnings
+  - Performance: <2s loading for up to 250 entries, category filtering at scale
+  
+  **Test Coverage:**
+  - 26 unit tests (learnings_loader module): 26/26 passing
+  - 9 integration tests (cross-command consistency): 9/9 passing
+  - E2E tests: Load, format, filter, similarity, duplicate detection, append operations
+  - Format validation: Timestamp, category, structure compliance
+
+### Changed
+
+- **Bicep Generation** - Now context-aware with learnings database
+  - Applies learned patterns to prevent recurring errors
+  - Filters learnings by detected resource types for relevance
+  - Maintains backward compatibility (degrades gracefully if database missing)
+
+- **Bicep Validation** - Enhanced with learning capture
+  - Automatically extracts learnings from validation failures
+  - Deduplicates before appending to database
+  - HALTs if learnings database missing (explicit failure mode)
+
 ## [0.0.22] - 2025-10-30
 
 ### Added

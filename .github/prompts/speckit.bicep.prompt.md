@@ -29,7 +29,7 @@ $ARGUMENTS
 
 **Priority Rules**:
 1. `$ARGUMENTS` instructions override default recommendations in this prompt
-2. Security requirements (Private Endpoints, NSP, NAT Gateway) remain MANDATORY unless explicitly overridden in `$ARGUMENTS`
+2. Security requirements (Private Endpoints, NSG, NAT Gateway) remain MANDATORY unless explicitly overridden in `$ARGUMENTS`
 3. Validation rules (syntax checks, what-if simulation) remain MANDATORY for all templates
 4. If `$ARGUMENTS` conflict with security requirements, ask for clarification before proceeding
 
@@ -41,6 +41,359 @@ $ARGUMENTS
 - **Special Requirement**: "This deployment must support HIPAA compliance with audit logging enabled"
 
 If `$ARGUMENTS` are **not provided**, proceed with standard analysis and generation workflow.
+
+## 🧠 Apply Learnings Database (Self-Improving Generation)
+
+**CRITICAL**: Before generating templates, load and apply organizational learnings from the learnings database.
+
+### Loading Learnings
+
+1. **Import the learnings loader module**:
+```python
+# Add at the top of generation logic
+from specify_cli.utils.learnings_loader import load_learnings_database, filter_learnings_by_category
+```
+
+2. **Load learnings database with error handling**:
+```python
+import logging
+from pathlib import Path
+
+# Configure learnings database path
+learnings_db_path = Path('.specify/learnings/bicep-learnings.md')
+
+# Load with graceful degradation
+learnings = []
+if learnings_db_path.exists():
+    try:
+        learnings = load_learnings_database(str(learnings_db_path))
+        logging.info(f"✓ Loaded {len(learnings)} learnings from database")
+        
+        # Performance optimization: Filter by relevant categories if >250 entries
+        if len(learnings) > 250:
+            relevant_categories = ['Security', 'Networking', 'Configuration', 'Compliance']
+            learnings = filter_learnings_by_category(learnings, relevant_categories)
+            logging.info(f"✓ Filtered to {len(learnings)} relevant learnings for performance")
+            
+    except FileNotFoundError as e:
+        logging.warning(f"⚠️ Learnings database not found: {e}. Proceeding with default patterns.")
+    except Exception as e:
+        logging.error(f"❌ Error loading learnings database: {e}. Proceeding without learnings.")
+else:
+    logging.warning("⚠️ Learnings database not found at .specify/learnings/bicep-learnings.md. Proceeding with default patterns.")
+```
+
+3. **Format learnings for prompt context**:
+```python
+def format_learnings_for_prompt(learnings):
+    """Format learnings as structured guidance for template generation."""
+    if not learnings:
+        return "No organizational learnings available."
+    
+    # Group by category
+    by_category = {}
+    for entry in learnings:
+        if entry.category not in by_category:
+            by_category[entry.category] = []
+        by_category[entry.category].append(entry)
+    
+    # Format as markdown sections
+    formatted = "### 📚 Organizational Learnings (Apply to Generated Templates)\n\n"
+    for category, entries in sorted(by_category.items()):
+        formatted += f"#### {category} ({len(entries)} learnings)\n\n"
+        for entry in entries:
+            formatted += f"- **Context**: {entry.context}\n"
+            formatted += f"  - **Issue**: {entry.issue}\n"
+            formatted += f"  - **Solution**: {entry.solution}\n"
+            formatted += f"  - **Applies to**: {entry.timestamp.strftime('%Y-%m-%d')}\n\n"
+    
+    return formatted
+
+# Add to prompt context
+learnings_guidance = format_learnings_for_prompt(learnings)
+```
+
+4. **Apply learnings during generation**:
+   - Review learnings before generating each module
+   - Check if current resource type has applicable learnings
+   - Apply solutions from learnings to template
+   - Prioritize learnings over default patterns when conflict exists
+
+### 📝 Automated Learning Capture (Error Detection & Append)
+
+**CRITICAL**: When deployment errors or validation issues occur, automatically capture structural issues as new learnings.
+
+#### When to Capture Learnings
+
+**Capture These Errors** (structural/configuration issues):
+- "missing property" - Required property not specified
+- "invalid value" - Wrong value for property
+- "quota exceeded" - Resource limits hit
+- "already exists" - Name conflict
+- "not found" - Missing dependency
+- "unauthorized" / "forbidden" - Permission issues
+- "conflict" - Resource state conflict
+- "bad request" - Malformed request
+
+**IGNORE These Errors** (transient/operational):
+- "throttled" - Rate limiting (temporary)
+- "timeout" - Network timeout (temporary)
+- "unavailable" / "service unavailable" - Service down (temporary)
+- "gateway timeout" - Gateway issue (temporary)
+- "too many requests" - Throttling (temporary)
+
+#### Error Detection and Append Logic
+
+```python
+from specify_cli.utils.learnings_loader import (
+    classify_error, 
+    check_insufficient_context,
+    append_learning_entry
+)
+
+def capture_deployment_error(error_message: str, resource_type: str = None):
+    """
+    Capture deployment error as new learning entry if structural issue.
+    
+    Args:
+        error_message: The error message from deployment
+        resource_type: Optional Azure resource type (e.g., 'Microsoft.Storage/storageAccounts')
+    """
+    # Classify error
+    should_capture, capture_keywords = classify_error(error_message)
+    
+    if not should_capture:
+        logging.info(f"⏭️ Skipping error capture (transient/operational error): {error_message[:80]}")
+        return
+    
+    # Check for insufficient context
+    has_insufficient = check_insufficient_context(error_message, resource_type)
+    if has_insufficient:
+        logging.warning(f"⚠️ Skipping error capture (insufficient context): {error_message[:80]}")
+        return
+    
+    # Extract learning components from error
+    category = categorize_error(error_message, resource_type)
+    context = extract_context(error_message, resource_type)
+    issue = extract_issue(error_message)
+    solution = extract_solution(error_message, resource_type)
+    
+    # Load existing learnings for duplicate checking
+    learnings_db_path = Path('.specify/learnings/bicep-learnings.md')
+    
+    # CRITICAL: HALT if database cannot be loaded for appending
+    if not learnings_db_path.parent.exists():
+        raise FileNotFoundError(
+            f"Learnings database directory not found: {learnings_db_path.parent}\n"
+            f"Action: Create .specify/learnings/ directory before appending.\n"
+            f"This is a critical failure per Constitution Principle III."
+        )
+    
+    try:
+        # Append with automatic duplicate checking
+        was_appended = append_learning_entry(
+            file_path=learnings_db_path,
+            category=category,
+            context=context,
+            issue=issue,
+            solution=solution,
+            check_duplicates=True
+        )
+        
+        if was_appended:
+            logging.info(f"✅ Captured new learning: {category} - {context}")
+        else:
+            logging.info(f"ℹ️ Learning already exists (duplicate detected)")
+            
+    except ValueError as e:
+        logging.error(f"❌ Invalid learning entry format: {e}")
+        raise
+    except FileNotFoundError as e:
+        logging.error(f"❌ Cannot access learnings database: {e}")
+        raise
+    except Exception as e:
+        logging.error(f"❌ Failed to append learning: {e}")
+        raise
+
+def categorize_error(error_message: str, resource_type: str = None) -> str:
+    """Determine appropriate category for error."""
+    error_lower = error_message.lower()
+    
+    # Security/authentication errors
+    if any(keyword in error_lower for keyword in ['unauthorized', 'forbidden', 'permission', 'identity', 'authentication']):
+        return 'Security'
+    
+    # Networking errors
+    if any(keyword in error_lower for keyword in ['network', 'subnet', 'vnet', 'endpoint', 'dns', 'ip address']):
+        return 'Networking'
+    
+    # Compliance errors
+    if any(keyword in error_lower for keyword in ['policy', 'compliance', 'tls', 'encryption', 'audit']):
+        return 'Compliance'
+    
+    # Resource-type based categorization
+    if resource_type:
+        if 'Storage' in resource_type:
+            return 'Data Services'
+        elif 'Sql' in resource_type or 'Database' in resource_type:
+            return 'Data Services'
+        elif 'Web' in resource_type or 'ContainerApp' in resource_type:
+            return 'Compute'
+        elif 'Network' in resource_type:
+            return 'Networking'
+    
+    # Default to Configuration for property/value errors
+    return 'Configuration'
+
+def extract_context(error_message: str, resource_type: str = None) -> str:
+    """Extract context from error message."""
+    if resource_type:
+        # Use resource type as primary context
+        return resource_type.split('/')[-1]  # e.g., "storageAccounts" from "Microsoft.Storage/storageAccounts"
+    
+    # Extract from error message
+    # Try to find resource type mentions
+    import re
+    match = re.search(r'Microsoft\.\w+/\w+', error_message)
+    if match:
+        return match.group(0).split('/')[-1]
+    
+    # Fallback to first 50 chars of error
+    return error_message[:50].strip()
+
+def extract_issue(error_message: str) -> str:
+    """Extract issue description from error message."""
+    # Clean and truncate error message
+    issue = error_message.replace('\n', ' ').strip()
+    
+    # Try to extract just the core error (first sentence)
+    if '.' in issue:
+        issue = issue.split('.')[0] + '.'
+    
+    # Truncate to 150 chars max
+    return issue[:150]
+
+def extract_solution(error_message: str, resource_type: str = None) -> str:
+    """Generate solution guidance from error message."""
+    error_lower = error_message.lower()
+    
+    # Common solution patterns
+    if 'missing property' in error_lower or 'required property' in error_lower:
+        # Try to extract property name
+        import re
+        prop_match = re.search(r"property['\s]+(\w+)", error_message, re.IGNORECASE)
+        if prop_match:
+            prop_name = prop_match.group(1)
+            return f"Add required property '{prop_name}' to resource definition"
+        return "Add all required properties to resource definition"
+    
+    if 'invalid value' in error_lower:
+        return "Review property value constraints and use valid value from documentation"
+    
+    if 'quota exceeded' in error_lower:
+        return "Request quota increase or use different resource tier/region"
+    
+    if 'already exists' in error_lower:
+        return "Use unique resource name or deploy to different resource group/region"
+    
+    if 'not found' in error_lower:
+        return "Ensure dependent resource exists before deployment or fix resource reference"
+    
+    if 'unauthorized' in error_lower or 'forbidden' in error_lower:
+        return "Grant necessary permissions or use Managed Identity for authentication"
+    
+    # Generic solution
+    return "Review Azure documentation and fix configuration error"
+
+# Usage: Call when deployment errors occur
+try:
+    # ... deployment code ...
+    pass
+except Exception as e:
+    error_message = str(e)
+    capture_deployment_error(error_message, resource_type="Microsoft.Storage/storageAccounts")
+    raise  # Re-raise after capturing learning
+```
+
+#### Integration with Deployment Scripts
+
+When generating PowerShell deployment scripts, wrap deployment commands with error capture:
+
+```powershell
+# Before deployment
+$ErrorActionPreference = 'Stop'
+
+try {
+    # Deploy Bicep template
+    $deployment = az deployment group create `
+        --resource-group $resourceGroupName `
+        --template-file main.bicep `
+        --parameters @parameters.json `
+        --output json | ConvertFrom-Json
+    
+    # Check deployment state
+    if ($deployment.properties.provisioningState -ne 'Succeeded') {
+        $errorDetails = $deployment.properties.error | ConvertTo-Json -Depth 10
+        
+        # Capture learning from deployment error
+        python -c "
+from specify_cli.utils.learnings_loader import classify_error, append_learning_entry
+from pathlib import Path
+error_msg = '''$errorDetails'''
+# ... capture logic ...
+"
+        
+        throw "Deployment failed: $errorDetails"
+    }
+}
+catch {
+    Write-Error "Deployment error: $_"
+    # Error is captured in Python block above
+    exit 1
+}
+```
+
+### SFI Compliance Requirements
+
+**MANDATORY**: Review and apply Secure Future Initiative (SFI) patterns from `specs/004-bicep-learnings-database/contracts/sfi-patterns.md`.
+
+**Core SFI Patterns (MUST apply)**:
+
+1. **VNet Isolation** - All resources within same VNet with subnet segmentation
+2. **Disable Public Access** - `publicNetworkAccess: 'Disabled'` for all data services
+3. **Private Endpoints** - Use Private Link for service-to-service connectivity with DNS integration
+4. **Managed Identity Auth** - Use System-Assigned identity with RBAC, NO connection strings
+5. **Encryption Config** - TLS 1.2+ for in-transit, customer-managed keys for at-rest
+6. **App Service VNet Integration** - Enable `vnetRouteAllEnabled` for all App Services
+
+**Anti-Patterns (MUST avoid)**:
+- ❌ **Azure Front Door**: Only include when explicitly requested (not default)
+- ❌ **Service Endpoints**: Replace with Private Endpoints for data exfiltration protection (use NSG rules for network filtering)
+
+**Validation checklist** (from sfi-patterns.md):
+```
+- [ ] All resources deployed within same VNet
+- [ ] All data services have publicNetworkAccess: 'Disabled'
+- [ ] Private Endpoints created with privateDnsZoneGroups
+- [ ] All services use Managed Identity (no connection strings)
+- [ ] TLS 1.2+ enforced (minimumTlsVersion: 'TLS1_2')
+- [ ] App Services have VNet integration (virtualNetworkSubnetId + vnetRouteAllEnabled)
+- [ ] No Azure Front Door (unless explicitly requested)
+- [ ] Network Security Groups (NSG) configured for subnet-level filtering
+```
+
+**Learning Entry Examples**:
+```
+2025-10-31T15:00:00Z Security Azure Storage → Public network access enabled by default → Set publicNetworkAccess: 'Disabled' and configure Private Endpoint
+
+2025-10-31T15:00:00Z Security Managed Identity → Connection strings stored in configuration → Use SystemAssigned identity and RBAC role assignments instead of connection strings
+
+2025-10-31T15:00:00Z Networking Private Link → Service endpoints used instead of Private Endpoints → Replace service endpoints with Private Endpoints for data exfiltration protection
+
+2025-10-31T15:00:00Z Configuration Azure Front Door → Included by default in architecture → Only include when explicitly requested - not required for single-region deployments
+```
+
+---
 
 ## 🎯 Core Deliverable Requirements
 
@@ -76,7 +429,7 @@ If `$ARGUMENTS` are **not provided**, proceed with standard analysis and generat
    - ✅ **Private Endpoints Required**: Key Vault, Cosmos DB, SQL DB, Storage Accounts MUST have:
      - `publicNetworkAccess: 'Disabled'`
      - Private Link/Private Endpoint (PL/PE) configuration
-     - Network Security Perimeter (NSP) association in Transition mode
+     - Network Security Groups (NSG) with deny-by-default rules
    - ✅ **NAT Gateway**: All VNets and subnets MUST use NAT Gateway for outbound connectivity
    - ✅ **Container App Environments**: Must have dedicated subnet with attached NAT Gateway
    - ✅ **No Public Access**: Storage, databases, and vaults MUST NOT be publicly accessible
@@ -621,9 +974,9 @@ Look for patterns like:
 
 **Your proposal should include**:
 1. Detected Azure resources table (resource type, module file, purpose, security config)
-2. Mandatory security architecture diagram (VNet topology, subnets, NAT Gateway, NSP)
+2. Mandatory security architecture diagram (VNet topology, subnets, NAT Gateway, NSG)
 3. List of all Bicep modules to generate (organized by deployment phase)
-4. Example module showing secure configuration (e.g., Key Vault with PE + NSP)
+4. Example module showing secure configuration (e.g., Key Vault with PE + NSG)
 5. Multi-environment configuration strategy (dev, staging, production)
 6. Deployment order and dependencies
 7. Security compliance checklist
@@ -664,8 +1017,8 @@ Based on my analysis of your project, here's the complete secure Bicep infrastru
 | Resource Type | Module File | Purpose | Security Configuration |
 |---------------|-------------|---------|------------------------|
 | Azure App Service | `app-service.bicep` | [Detected purpose] | VNet integration + Managed Identity |
-| Azure Storage Account | `storage.bicep` | [Detected purpose] | Private Endpoint + NSP + publicNetworkAccess: Disabled |
-| Azure Key Vault | `key-vault.bicep` | Secrets management | Private Endpoint + NSP + publicNetworkAccess: Disabled |
+| Azure Storage Account | `storage.bicep` | [Detected purpose] | Private Endpoint + NSG + publicNetworkAccess: Disabled |
+| Azure Key Vault | `key-vault.bicep` | Secrets management | Private Endpoint + NSG + publicNetworkAccess: Disabled |
 | [Other resources...] | [...] | [...] | [...] |
 
 ### 🔐 Mandatory Security Architecture
@@ -687,15 +1040,15 @@ Virtual Network (10.0.0.0/16)
 ```
 
 **2. Private Endpoint Requirements** (MANDATORY for data services)
-- ✅ Key Vault: `publicNetworkAccess: 'Disabled'` + Private Endpoint + NSP
-- ✅ Storage Account: `publicNetworkAccess: 'Disabled'` + Private Endpoint + NSP
-- ✅ Cosmos DB: `publicNetworkAccess: 'Disabled'` + Private Endpoint + NSP (if detected)
-- ✅ SQL Database: `publicNetworkAccess: 'Disabled'` + Private Endpoint + NSP (if detected)
+- ✅ Key Vault: `publicNetworkAccess: 'Disabled'` + Private Endpoint + NSG
+- ✅ Storage Account: `publicNetworkAccess: 'Disabled'` + Private Endpoint + NSG
+- ✅ Cosmos DB: `publicNetworkAccess: 'Disabled'` + Private Endpoint + NSG (if detected)
+- ✅ SQL Database: `publicNetworkAccess: 'Disabled'` + Private Endpoint + NSG (if detected)
 
-**3. Network Security Perimeter (NSP) - Transition Mode**
-- NSP resource created in Transition mode (formerly Learning mode)
-- All private endpoint resources associated with NSP
-- Perimeter profiles configured for access rule learning
+**3. Network Security Groups (NSG) - Subnet Filtering**
+- NSG created for each subnet with deny-by-default rules
+- Allow rules for required service traffic only
+- NSG flow logs enabled for network monitoring
 
 **4. NAT Gateway Configuration**
 - NAT Gateway deployed in each region
@@ -708,10 +1061,10 @@ Virtual Network (10.0.0.0/16)
 **Phase 1: Network Foundation** (CRITICAL - must be first)
 1. `modules/nat-gateway.bicep` - NAT Gateway for outbound connectivity
 2. `modules/vnet.bicep` - VNet with 4 subnets (app, data, container, pe)
-3. `modules/nsp.bicep` - Network Security Perimeter in Transition mode
+3. `modules/nsg.bicep` - Network Security Groups with deny-by-default rules
 
 **Phase 2: Security & Identity**
-4. `modules/key-vault.bicep` - Key Vault with PE + NSP + publicNetworkAccess disabled
+4. `modules/key-vault.bicep` - Key Vault with PE + NSG + publicNetworkAccess disabled
 5. `modules/managed-identity.bicep` - User-assigned managed identity for services
 
 **Phase 3: Traffic Management & Security** (MANDATORY)
@@ -721,9 +1074,9 @@ Virtual Network (10.0.0.0/16)
 9. `modules/waf-policy.bicep` - Web Application Firewall policy (OWASP protection)
 
 **Phase 4: Data Services** (with private endpoints)
-10. `modules/storage.bicep` - Storage with PE + NSP + publicNetworkAccess disabled
-11. `modules/cosmos-db.bicep` (if detected) - Cosmos DB with PE + NSP
-12. `modules/sql-database.bicep` (if detected) - SQL DB with PE + NSP
+10. `modules/storage.bicep` - Storage with PE + NSG + publicNetworkAccess disabled
+11. `modules/cosmos-db.bicep` (if detected) - Cosmos DB with PE + NSG
+12. `modules/sql-database.bicep` (if detected) - SQL DB with PE + NSG
 
 **Phase 5: Compute Services**
 13. `modules/app-service-plan.bicep` - App Service Plan
@@ -744,7 +1097,7 @@ param location string = resourceGroup().location
 param namePrefix string
 param environment string
 param privateEndpointSubnetId string
-param nspId string
+param nsgId string
 
 var keyVaultName = '${namePrefix}-${environment}-kv'
 
@@ -783,17 +1136,8 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-11-01' = {
   }
 }
 
-// NSP Association (Transition mode)
-resource nspAssociation 'Microsoft.Network/networkSecurityPerimeters/resourceAssociations@2023-08-01' = {
-  name: '${keyVaultName}-nsp-assoc'
-  properties: {
-    privateLinkResource: { id: keyVault.id }
-    profile: {
-      accessRulesVersion: 1
-      accessRules: []  // Empty for Transition mode (learning)
-    }
-  }
-}
+// NSG rules are applied at the subnet level (see vnet.bicep module)
+// Private Endpoint automatically inherits NSG rules from the subnet
 
 output keyVaultId string = keyVault.id
 output keyVaultName string = keyVault.name
@@ -860,17 +1204,17 @@ output publicIpAddress string = natPublicIp.properties.ipAddress
 ```
 NAT Gateway (Phase 1) 
     ↓
+NSG (Phase 1)
+    ↓
 VNet + Subnets (Phase 1)
     ↓
-NSP (Phase 1)
-    ↓
-Managed Identity (Phase 2) → Key Vault + PE + NSP (Phase 2)
+Managed Identity (Phase 2) → Key Vault + PE (Phase 2)
     ↓
 WAF Policy (Phase 3) → Application Gateway + WAF (Phase 3)
     ↓
 Azure Front Door (Phase 3) → Traffic Manager (Phase 3)
     ↓
-Storage + PE + NSP (Phase 4) → Databases + PE + NSP (Phase 4)
+Storage + PE (Phase 4) → Databases + PE (Phase 4)
     ↓
 App Service Plan (Phase 5) → App Service + VNet Integration (Phase 5)
     ↓
@@ -884,7 +1228,7 @@ Container App Environment + NAT Gateway Subnet (Phase 5, if applicable)
 **All templates will enforce**:
 - ✅ No public network access for data services (Key Vault, Storage, Cosmos DB, SQL DB)
 - ✅ Private Endpoints for all data service connectivity
-- ✅ Network Security Perimeter association in Transition mode
+- ✅ Network Security Groups (NSG) with deny-by-default rules on all subnets
 - ✅ NAT Gateway for all subnet outbound traffic
 - ✅ Container App Environments with dedicated subnets + NAT Gateway
 - ✅ **Traffic Management & Load Balancing**: Azure Front Door, Application Gateway with WAF, and Traffic Manager for all web-facing workloads
@@ -2777,7 +3121,7 @@ TO:
   ✅ Syntax validation passed (az bicep build)
   ✅ Uses Microsoft.Storage/storageAccounts@2023-01-01
   ✅ Private Endpoint configuration included
-  ✅ NSP association configured
+  ✅ NSG rules applied at subnet level
   ℹ️ No warnings or issues detected
 ```
 
@@ -3238,9 +3582,9 @@ Wait for user response.
 
 **Your proposal should include**:
 1. Detected Azure resources table (resource type, module file, purpose, security config)
-2. Mandatory security architecture diagram (VNet topology, subnets, NAT Gateway, NSP)
+2. Mandatory security architecture diagram (VNet topology, subnets, NAT Gateway, NSG)
 3. List of all Bicep modules to generate (organized by deployment phase)
-4. Example module showing secure configuration (e.g., Key Vault with PE + NSP)
+4. Example module showing secure configuration (e.g., Key Vault with PE + NSG)
 5. Multi-environment configuration strategy (dev, staging, production)
 6. Deployment order and dependencies
 7. Security compliance checklist

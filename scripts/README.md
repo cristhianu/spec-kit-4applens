@@ -52,8 +52,18 @@ Install Specify CLI locally for development and testing:
 2. ✅ Check Python and pip installation
 3. ✅ Uninstall previous version (if exists)
 4. ✅ Install CLI in editable mode with Bicep support: `pip install -e ".[bicep]"`
-5. ✅ Copy `.github/prompts/speckit.bicep.prompt.md` to your test project
-6. ✅ Verify installation and show next steps
+5. ✅ Copy GitHub Copilot prompt files to your test project:
+   - `speckit.bicep.prompt.md` (from `.github/prompts/`)
+   - `speckit.validate.prompt.md` (from `templates/commands/`)
+6. ✅ Copy Bicep learnings database:
+   - `.specify/learnings/bicep-learnings.md` (required for bicep commands)
+7. ✅ Copy validation script and documentation:
+   - `scripts/bicep_validate_architecture.py` (SFI compliance validator)
+   - `scripts/README-VALIDATION-SCRIPT.md` (validation documentation)
+8. ✅ Copy wrapper scripts:
+   - `scripts/bash/bicep-validate-wrapper.sh` and `bicep-validate.sh`
+   - `scripts/powershell/bicep-validate-wrapper.ps1` and `bicep-validate.ps1`
+9. ✅ Verify installation and show next steps
 
 **Benefits of editable mode (`-e` flag):**
 
@@ -121,6 +131,34 @@ When adding new scripts:
 3. Use consistent output formatting (colors, symbols)
 4. Add error handling and validation
 5. Update this README with script description and usage examples
+
+### When Adding New GitHub Copilot Prompt Files
+
+**IMPORTANT**: If you add new prompt files for GitHub Copilot commands, you must update the install-local-dev scripts:
+
+1. **Add to prompt file arrays** in both:
+   - `scripts/powershell/install-local-dev.ps1` → `$promptFiles` array
+   - `scripts/bash/install-local-dev.sh` → `PROMPT_FILES` array
+
+2. **Array format** (both scripts use similar structure):
+   ```powershell
+   # PowerShell
+   @{
+       Name = "speckit.newcommand.prompt.md"
+       Source = ".github\prompts"  # or "templates\commands"
+       Command = "/speckit.newcommand"
+   }
+   ```
+   ```bash
+   # Bash
+   "speckit.newcommand.prompt.md:.github/prompts:/speckit.newcommand"
+   ```
+
+3. **Update "Next steps" section** in both scripts to list the new command
+
+4. **Test both scripts** to ensure prompt files are copied correctly
+
+This ensures developers can test new commands immediately after running the install script.
 
 ---
 

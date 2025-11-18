@@ -383,6 +383,291 @@ specify bicep generate \
 
 ---
 
+### Issue: Learnings Database Warnings
+
+The Bicep Generator uses a learnings database (`.specify/learnings/bicep-learnings.md`) to improve template generation based on past issues, best practices, and team knowledge. You may encounter warnings related to this database.
+
+#### Warning: Missing Learnings Database
+
+**Symptoms:**
+```
+WARNING: Learnings database not found at .specify/learnings/bicep-learnings.md
+Continuing without learnings (first-time generation)
+```
+
+**Cause:** No learnings database exists yet (common for first-time usage).
+
+**Solution:**
+
+This is **not an error** - just informational. The database will be created automatically when:
+- Bicep generation encounters errors that get captured
+- You manually add entries following [the quickstart guide](../../specs/004-bicep-learnings-database/contracts/quickstart.md)
+
+**No action needed** - generation continues normally.
+
+---
+
+#### Warning: Invalid Learnings Entry Format
+
+**Symptoms:**
+```
+WARNING: Cannot parse timestamp at line 42 in bicep-learnings.md
+Skipping invalid entry and continuing...
+
+WARNING: Unknown category 'Deployment' at line 57
+Valid categories: Security, Compliance, Networking, Data Services, Compute, Configuration, Operations, Cost
+
+WARNING: Context too long (150 chars, max 100) at line 63
+Entry will be skipped
+```
+
+**Cause:** Manual edits to learnings database with incorrect format:
+- Missing or invalid timestamp
+- Unknown category name
+- Field length exceeds limits (Context ≤100, Issue ≤150, Solution ≤200)
+- Wrong separator (must use `→` unicode U+2192)
+
+**Solution:**
+
+1. **Locate the problematic entry** in `.specify/learnings/bicep-learnings.md`:
+
+```bash
+# Linux/macOS
+sed -n '42p' .specify/learnings/bicep-learnings.md
+
+# Windows PowerShell
+Get-Content .specify/learnings/bicep-learnings.md | Select-Object -Index 41
+```
+
+2. **Fix the entry format** - see [Entry Format Rules](../../specs/004-bicep-learnings-database/contracts/learnings-format.md#entry-format):
+
+```markdown
+<!-- ✅ GOOD: Correct format -->
+[2025-01-15T00:00:00Z] Security Key Vault access without RBAC → Enable RBAC authorization mode → Use 'enableRbacAuthorization: true' in Key Vault properties
+
+<!-- ❌ BAD: Missing timestamp brackets -->
+2025-01-15 Security Key Vault access without RBAC → Enable RBAC authorization mode → Use 'enableRbacAuthorization: true'
+
+<!-- ❌ BAD: Invalid category -->
+[2025-01-15T00:00:00Z] Deployment Issue here → Solution here → Details here
+
+<!-- ❌ BAD: Context too long (>100 chars) -->
+[2025-01-15T00:00:00Z] Security This is a really long context field that exceeds the 100 character limit and will cause validation to fail → Solution → Details
+
+<!-- ❌ BAD: Wrong separator (using dash instead of arrow) -->
+[2025-01-15T00:00:00Z] Security Key Vault access - Enable RBAC - Use enableRbacAuthorization
+```
+
+3. **Verify character limits**:
+
+| Field | Max Length | Example |
+|-------|-----------|---------|
+| Context | 100 chars | `Key Vault access without RBAC` (30 chars) ✅ |
+| Issue | 150 chars | `Enable RBAC authorization mode` (32 chars) ✅ |
+| Solution | 200 chars | `Use 'enableRbacAuthorization: true' in properties` (51 chars) ✅ |
+
+4. **Test your fix**:
+
+```bash
+# Test that learnings load without warnings
+specify bicep generate --project-path . --dry-run
+
+# Or use validation command
+specify validate --project-path .
+```
+
+**See also:** [Quickstart Guide - Entry Format Rules](../../specs/004-bicep-learnings-database/contracts/quickstart.md#entry-format-rules)
+
+---
+
+#### Warning: Duplicate Learnings Entry Detected
+
+**Symptoms:**
+```
+WARNING: Potential duplicate detected at line 89 (72% similar to entry at line 45)
+Entry: "2025-01-15 | Security | Key Vault RBAC authorization..."
+Skipping duplicate to avoid redundancy
+```
+
+**Cause:** The entry you added is >60% similar to an existing entry (detected using TF-IDF + cosine similarity algorithm).
+
+**Why this happens:**
+- Manual entry duplicates automated capture
+- Two team members independently added similar learnings
+- Slight wording variations of same issue
+
+**Solution:**
+
+**Option A: Accept the duplicate rejection** (recommended)
+- The system already has coverage for this issue
+- No action needed - generation continues with existing entry
+
+**Option B: Consolidate the entries if the new one adds value**
+
+1. **Find the existing entry:**
+
+```bash
+# Linux/macOS
+sed -n '45p' .specify/learnings/bicep-learnings.md
+
+# Windows PowerShell
+Get-Content .specify/learnings/bicep-learnings.md | Select-Object -Index 44
+```
+
+2. **Compare the two entries:**
+- Does the new entry provide additional details?
+- Is the wording clearer or more actionable?
+- Does it cover a different aspect of the same issue?
+
+3. **If consolidating, merge the information:**
+
+```markdown
+<!-- BEFORE: Two similar entries -->
+[2025-01-10T00:00:00Z] Security Key Vault access → Enable RBAC → Use enableRbacAuthorization
+[2025-01-15T00:00:00Z] Security Key Vault without RBAC → Use RBAC authorization → Set enableRbacAuthorization: true in properties
+
+<!-- AFTER: Consolidated entry (keep most complete version) -->
+[2025-01-15T00:00:00Z] Security Key Vault access without RBAC → Enable RBAC authorization mode → Use 'enableRbacAuthorization: true' in Key Vault properties, removes legacy access policies
+```
+
+4. **Remove the duplicate line** and save.
+
+**See also:** 
+- [Quickstart Guide - Avoiding Duplicates](../../specs/004-bicep-learnings-database/contracts/quickstart.md#avoiding-duplicates)
+- [Format Contract - Duplicate Detection](../../specs/004-bicep-learnings-database/contracts/learnings-format.md#duplicate-detection)
+
+---
+
+#### Warning: Insufficient Context in Entry
+
+**Symptoms:**
+```
+WARNING: Insufficient context at line 73 (context: "error")
+Entry lacks specific details - consider expanding or removing
+```
+
+**Cause:** The entry's context field is too generic or vague:
+- Single-word context (e.g., "error", "failure")
+- Context <10 characters
+- Generic phrases that don't identify the specific scenario
+
+**Why this matters:** Vague entries don't help future generations because the system can't match them to specific error scenarios.
+
+**Solution:**
+
+1. **Review the entry** at the indicated line.
+
+2. **Expand the context** to be specific:
+
+```markdown
+<!-- ❌ BAD: Too vague -->
+[2025-01-15T00:00:00Z] Security error → Use RBAC → Enable RBAC authorization
+
+<!-- ✅ GOOD: Specific context -->
+[2025-01-15T00:00:00Z] Security Key Vault access without RBAC → Enable RBAC authorization mode → Use 'enableRbacAuthorization: true' in properties
+
+<!-- ❌ BAD: Generic -->
+[2025-01-15T00:00:00Z] Networking subnet → Fix config → Update settings
+
+<!-- ✅ GOOD: Specific scenario -->
+[2025-01-15T00:00:00Z] Networking Subnet without NSG attached → Attach Network Security Group → Reference NSG resource ID in subnet properties
+```
+
+3. **Ask yourself:**
+- Would someone else understand the specific problem from the context?
+- Does it identify the exact resource type and issue?
+- Is it searchable/matchable?
+
+4. **Either fix the entry or remove it** if it can't be made specific.
+
+**See also:** [Quickstart Guide - Examples of Bad Manual Entries](../../specs/004-bicep-learnings-database/contracts/quickstart.md#examples)
+
+---
+
+#### Issue: Learnings Not Being Applied in Generation
+
+**Symptoms:**
+- Learnings database loads without warnings
+- But generated templates don't reflect the learnings
+- Expected fixes not appearing in output
+
+**Diagnosis:**
+
+```bash
+# Check if learnings are loading
+specify bicep generate --project-path . --verbose
+
+# Look for log messages like:
+# "Loaded X learnings from database"
+# "Applied learning: [category] [context]..."
+```
+
+**Common Causes & Solutions:**
+
+1. **Context doesn't match the error:**
+
+The learning's context field must match the actual error message or scenario.
+
+```markdown
+<!-- If error is: "Missing network security group on subnet" -->
+
+<!-- ❌ Won't match: Context too different -->
+[2025-01-15T00:00:00Z] Networking NSG not configured → Attach NSG → Add NSG reference
+
+<!-- ✅ Will match: Context similar to error -->
+[2025-01-15T00:00:00Z] Networking Subnet without NSG attached → Attach Network Security Group → Reference NSG resource ID in subnet properties
+```
+
+**Fix:** Update context to match actual error messages in your project.
+
+2. **Wrong category for the issue:**
+
+The learning must use a [canonical category](../../specs/004-bicep-learnings-database/contracts/learnings-format.md#canonical-categories) that matches the resource type.
+
+```markdown
+<!-- ❌ Storage Account issue with wrong category -->
+[2025-01-15T00:00:00Z] Compute Storage Account access → Enable RBAC → Use RBAC authorization
+
+<!-- ✅ Correct category -->
+[2025-01-15T00:00:00Z] Data Services Storage Account access → Enable RBAC → Use RBAC authorization
+```
+
+**Fix:** Use the correct category (Security, Compliance, Networking, Data Services, Compute, Configuration, Operations, Cost).
+
+3. **Category priority conflict:**
+
+Security and Compliance categories override all others. If multiple learnings match, only the highest priority applies.
+
+```markdown
+<!-- Both entries match, but Security wins -->
+[2025-01-15T00:00:00Z] Security Key Vault access → Enable RBAC → Use RBAC authorization
+[2025-01-15T00:00:00Z] Configuration Key Vault access → Set access policy → Define access policies in properties
+<!-- ⚠️ Only Security entry will be applied -->
+```
+
+**Fix:** Ensure you have the right category priority for your use case. See [Format Contract - Conflict Resolution](../../specs/004-bicep-learnings-database/contracts/learnings-format.md#conflict-resolution).
+
+4. **Performance: Too many learnings (250+ entries):**
+
+At 250+ entries, category filtering is enabled automatically. Only learnings matching the resource category are considered.
+
+```bash
+# Check entry count
+wc -l .specify/learnings/bicep-learnings.md  # Linux/macOS
+(Get-Content .specify/learnings/bicep-learnings.md).Count  # Windows PowerShell
+```
+
+**Fix:** If you have 250+ entries:
+- Ensure learnings use correct categories
+- Consider consolidating duplicate or outdated entries
+- Archive obsolete learnings (move to `.specify/learnings/archive/`)
+
+**See also:**
+- [Format Contract - Integration with Commands](../../specs/004-bicep-learnings-database/contracts/learnings-format.md#integration-with-commands)
+- [Format Contract - Performance Budgets](../../specs/004-bicep-learnings-database/contracts/learnings-format.md#performance-budgets)
+
+---
+
 ## Deployment Issues
 
 ### Issue: Deployment Fails with Permission Error

@@ -99,18 +99,54 @@ bicep-generate --project-path "." --environment "staging" --region "centralus" -
 - **Parameter files**: Separate parameters for each environment
 - **Dependency management**: Automatic resource dependency resolution
 - **Naming conventions**: Consistent Azure naming patterns
+- **Self-Improving Generation**: Applies learnings from `.specify/learnings/bicep-learnings.md` database
 
-### Security & Compliance
+### Security & Compliance  
 - **Key Vault integration**: Secrets stored in Azure Key Vault
 - **RBAC configuration**: Role-based access control setup
 - **Network security**: Secure network configurations by default
 - **Monitoring**: Application Insights integration
+- **SFI Compliance**: Follows Secure Future Initiative patterns (VNet isolation, Private Endpoints, Managed Identity)
 
 ### Cost Optimization
 - **Resource sizing**: Appropriate tiers for each environment
 - **Auto-scaling**: Configured where applicable
 - **Cost estimation**: Monthly cost estimates provided
 - **Resource tagging**: Proper tagging for cost management
+
+## 🧠 Learnings Database Integration
+
+The Bicep generator now applies organizational learnings from `.specify/learnings/bicep-learnings.md`:
+
+### How It Works
+1. **Automatic Loading**: Learnings database loaded before template generation
+2. **Categorized Guidance**: Learnings organized by category (Security, Networking, Configuration, etc.)
+3. **Context-Aware**: Applies relevant learnings to each resource type
+4. **SFI Patterns**: Enforces Secure Future Initiative best practices from `specs/004-bicep-learnings-database/contracts/sfi-patterns.md`
+
+### Example Learnings Applied
+- **Security**: `publicNetworkAccess: 'Disabled'` for all data services (Storage, Key Vault, SQL)
+- **Networking**: Private Endpoints with DNS integration instead of public endpoints
+- **Authentication**: Managed Identity with RBAC instead of connection strings
+- **Configuration**: No Azure Front Door by default (only when explicitly requested)
+
+### Learnings Database Location
+```
+.specify/learnings/bicep-learnings.md
+```
+
+**Note**: If database doesn't exist, generator proceeds with default patterns and logs a warning.
+
+### Adding Custom Learnings
+You can add custom learnings to the database in this format:
+```
+[Timestamp] Category Context → Issue → Solution
+```
+
+Example:
+```
+2025-10-31T15:00:00Z Security Azure Storage → Public network access enabled by default → Set publicNetworkAccess: 'Disabled' and configure Private Endpoint
+```
 
 ## Troubleshooting
 
