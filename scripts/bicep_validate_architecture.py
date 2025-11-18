@@ -11,7 +11,7 @@ Exit Codes:
     2 - Script error (invalid arguments, file not found, etc.)
 
 Usage:
-    python scripts/bicep-validate-architecture.py <bicep-file> [options]
+    python scripts/bicep_validate_architecture.py <bicep-file> [options]
     
 Options:
     --allow-front-door      Allow Azure Front Door resources (skip Front Door check)
@@ -20,13 +20,13 @@ Options:
     
 Examples:
     # Validate a Bicep template
-    python scripts/bicep-validate-architecture.py main.bicep
+    python scripts/bicep_validate_architecture.py main.bicep
     
     # Allow Front Door for CDN scenario
-    python scripts/bicep-validate-architecture.py main.bicep --allow-front-door
+    python scripts/bicep_validate_architecture.py main.bicep --allow-front-door
     
     # CI/CD integration
-    python scripts/bicep-validate-architecture.py main.bicep || exit 1
+    python scripts/bicep_validate_architecture.py main.bicep || exit 1
 """
 
 import argparse

@@ -4,7 +4,7 @@ Automated validation script for Secure Future Initiative (SFI) compliance in Bic
 
 ## Overview
 
-The `bicep-validate-architecture.py` script checks generated Bicep templates against organizational security and architecture standards documented in the learnings database. It provides automated verification of SFI compliance patterns to prevent common security misconfigurations.
+The `bicep_validate_architecture.py` script checks generated Bicep templates against organizational security and architecture standards documented in the learnings database. It provides automated verification of SFI compliance patterns to prevent common security misconfigurations.
 
 ## Features
 
