@@ -49,13 +49,12 @@ Phase 3 (User Story 1) has been **successfully completed** with all 12 tasks fin
 
 | Feature | Status | Details |
 |---------|--------|---------|
-| Script | ✅ Complete | `scripts/bicep-validate-architecture.py` (518 lines) |
+| Script | ✅ Complete | `scripts/bicep_validate_architecture.py` (518 lines) |
 | CLI Interface | ✅ Complete | `--verbose`, `--json`, `--allow-front-door` flags |
 | Exit Codes | ✅ Complete | 0 (pass), 1 (violations), 2 (error) |
 | Line Number Reporting | ✅ Complete | Exact violation locations |
 | Severity Levels | ✅ Complete | Error vs. warning distinction |
 | CI/CD Ready | ✅ Complete | JSON output for pipeline integration |
-| Python Module | ✅ Complete | `scripts/bicep_validate_architecture.py` (importable) |
 
 **8 Automated Checks**:
 1. ✅ No Azure Front Door (unless `--allow-front-door`)
@@ -165,7 +164,7 @@ Phase 3 (User Story 1) has been **successfully completed** with all 12 tasks fin
 
 ### T024.1: Architectural Validation Script ✅
 - **Status**: Complete
-- **Deliverable**: `scripts/bicep-validate-architecture.py` (518 lines)
+- **Deliverable**: `scripts/bicep_validate_architecture.py` (518 lines)
 - **Features**:
   - CLI interface: `--verbose`, `--json`, `--allow-front-door`
   - Exit codes: 0 (pass), 1 (violations), 2 (error)
@@ -236,7 +235,7 @@ pytest tests/unit/test_backward_compatibility.py -v   # 11/11 ✅ (1 skipped)
 #### Compliant Template (`sample-compliant.bicep`)
 
 ```bash
-$ python scripts/bicep-validate-architecture.py tests/fixtures/sample-compliant.bicep --verbose
+$ python scripts/bicep_validate_architecture.py tests/fixtures/sample-compliant.bicep --verbose
 
 🔍 Validating: tests/fixtures/sample-compliant.bicep
 ================================================================================
@@ -261,7 +260,7 @@ Exit Code: 0
 #### Non-Compliant Template (`sample-non-compliant.bicep`)
 
 ```bash
-$ python scripts/bicep-validate-architecture.py tests/fixtures/sample-non-compliant.bicep --verbose
+$ python scripts/bicep_validate_architecture.py tests/fixtures/sample-non-compliant.bicep --verbose
 
 🔍 Validating: tests/fixtures/sample-non-compliant.bicep
 ================================================================================
@@ -291,7 +290,7 @@ Exit Code: 1
 #### JSON Output Test
 
 ```bash
-$ python scripts/bicep-validate-architecture.py tests/fixtures/sample-compliant.bicep --json
+$ python scripts/bicep_validate_architecture.py tests/fixtures/sample-compliant.bicep --json
 {
   "file": "tests/fixtures/sample-compliant.bicep",
   "passed": true,
@@ -337,9 +336,9 @@ for canonical in ["Security", "Compliance", "Networking", "Compute", "Data Servi
 
 **Root Cause**: Python module names cannot contain hyphens.
 
-**Fix**: Created `scripts/bicep_validate_architecture.py` (underscore version) for test imports while keeping `bicep-validate-architecture.py` as the CLI tool.
+**Fix**: Renamed the script to `scripts/bicep_validate_architecture.py` (underscore version) which works both as a CLI tool and as an importable Python module.
 
-**Result**: Tests can import validator class successfully ✅
+**Result**: Tests can import validator class successfully, and the script can be executed directly ✅
 
 ### Issue #3: Test Assertion Failure (Escaped Backslash)
 
@@ -388,7 +387,7 @@ Apply these learnings when generating Bicep templates to ensure SFI compliance.
 ### Validation Workflow
 
 1. User generates Bicep template via `/speckit.bicep`
-2. User runs `python scripts/bicep-validate-architecture.py main.bicep`
+2. User runs `python scripts/bicep_validate_architecture.py main.bicep`
 3. Script validates 8 SFI compliance checks
 4. Violations reported with line numbers and severity
 5. User fixes violations (or uses `--allow-front-door` for exceptions)
@@ -407,7 +406,7 @@ Apply these learnings when generating Bicep templates to ensure SFI compliance.
     versionSpec: '3.11'
 
 - script: |
-    python scripts/bicep-validate-architecture.py main.bicep --json > validation-results.json
+    python scripts/bicep_validate_architecture.py main.bicep --json > validation-results.json
   displayName: 'Validate Bicep Architecture'
   continueOnError: false
 
@@ -428,7 +427,7 @@ Apply these learnings when generating Bicep templates to ensure SFI compliance.
 
 - name: Validate Bicep Architecture
   run: |
-    python scripts/bicep-validate-architecture.py main.bicep
+    python scripts/bicep_validate_architecture.py main.bicep
   continue-on-error: false
 ```
 
@@ -443,7 +442,7 @@ bicep_files=$(git diff --cached --name-only --diff-filter=ACM | grep '\.bicep$')
 if [ -n "$bicep_files" ]; then
     echo "🔍 Validating Bicep templates..."
     for file in $bicep_files; do
-        python scripts/bicep-validate-architecture.py "$file" || exit 1
+        python scripts/bicep_validate_architecture.py "$file" || exit 1
     done
     echo "✅ All Bicep templates passed validation"
 fi

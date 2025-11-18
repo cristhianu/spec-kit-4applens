@@ -229,13 +229,13 @@ For automated SFI (Secure Future Initiative) compliance checking:
 
 ```bash
 # Validate Bicep template compliance
-python scripts/bicep-validate-architecture.py main.bicep
+python scripts/bicep_validate_architecture.py main.bicep
 
 # Detailed output with line numbers
-python scripts/bicep-validate-architecture.py main.bicep --verbose
+python scripts/bicep_validate_architecture.py main.bicep --verbose
 
 # JSON output for CI/CD integration
-python scripts/bicep-validate-architecture.py main.bicep --json
+python scripts/bicep_validate_architecture.py main.bicep --json
 ```
 
 The script validates 8 critical security and architecture patterns:

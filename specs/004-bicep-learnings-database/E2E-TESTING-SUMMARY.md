@@ -194,7 +194,9 @@ pytest tests/e2e/test_bicep_generation_sfi_compliance.py -v --tb=short
 
 ### T024.1: Architectural Validation Script (Pending)
 
-Create `scripts/bicep-validate-architecture.py` to automate SFI compliance validation:
+### Validation Script
+
+Create `scripts/bicep_validate_architecture.py` to automate SFI compliance validation:
 
 **Functionality**:
 1. Parse Bicep template files (regex or JSON representation)
@@ -207,7 +209,7 @@ Create `scripts/bicep-validate-architecture.py` to automate SFI compliance valid
 
 **Usage**:
 ```bash
-python scripts/bicep-validate-architecture.py path/to/template.bicep
+python scripts/bicep_validate_architecture.py path/to/template.bicep
 ```
 
 **Integration**: Can be used in CI/CD pipelines to automatically enforce SFI compliance
