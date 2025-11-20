@@ -1,0 +1,9 @@
+{
+  "serviceGroupName": "TestServiceGroup",
+  "serviceId": "test-service-001",
+  "stageMapName": "TestStageMap",
+  "environment": "Test",
+  "selectionScope": "regions(westus2,eastus).steps(*).stamps(*).actions(*)",
+  "pollingInterval": 5,
+  "maxRetries": 2
+}

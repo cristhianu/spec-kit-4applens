@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Deploy Sentinel Configuration Template",
+  "serviceGroupName": "YourServiceGroup",
+  "serviceId": "00000000-0000-0000-0000-000000000000",
+  "stageMapName": "YourStageMap",
+  "environment": "PPE",
+  "selectionScope": "regions(*).steps(*).stamps(*).actions(*)",
+  "exclusionScope": "",
+  "teamsWebhookUrl": "",
+  "stressTestConfig": {
+    "enabled": false,
+    "endpoints": [
+      {
+        "url": "https://example.azureedge.net/health",
+        "requestCount": 100,
+        "durationSeconds": 30,
+        "timeoutSeconds": 10,
+        "authToken": null,
+        "thresholds": {
+          "successRatePercent": 95.0,
+          "p95LatencyMs": 500
+        }
+      }
+    ]
+  },
+  "pipelineConfig": {
+    "enabled": false,
+    "project": "YourProject",
+    "pipelineId": 0,
+    "branch": null,
+    "parameters": {}
+  },
+  "pollingInterval": 30,
+  "maxRetries": 3,
+  "_comments": {
+    "serviceGroupName": "EV2 Service Group Name (required)",
+    "serviceId": "EV2 Service ID GUID (required)",
+    "stageMapName": "EV2 Stage Map Name (required)",
+    "environment": "Target environment: PPE, PROD, etc. (required)",
+    "selectionScope": "EV2 selection scope: regions(X,Y).steps(*).stamps(*).actions(*)",
+    "exclusionScope": "EV2 exclusion scope (optional)",
+    "teamsWebhookUrl": "Power Automate Workflow Webhook URL for notifications (optional)",
+    "stressTestConfig.enabled": "Set to true to enable stress testing after stage completion",
+    "stressTestConfig.endpoints": "Array of endpoints to stress test with thresholds",
+    "pipelineConfig.enabled": "Set to true to trigger ADO pipeline before rollout",
+    "pipelineConfig.project": "Azure DevOps project name",
+    "pipelineConfig.pipelineId": "Azure DevOps pipeline ID (integer)",
+    "pollingInterval": "Seconds between EV2 status polls (default: 30)",
+    "maxRetries": "Maximum retry attempts for transient failures (default: 3)"
+  }
+}

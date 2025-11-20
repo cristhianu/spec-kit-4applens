@@ -1,0 +1,21 @@
+{
+  "serviceGroupName": "TestServiceGroup",
+  "serviceId": "test-service-001",
+  "stageMapName": "TestStageMap",
+  "environment": "Test",
+  "selectionScope": "regions(westus2,eastus).steps(*).stamps(*).actions(*)",
+  "exclusionScope": "regions(centralus)",
+  "teamsWebhookUrl": "${TEAMS_WEBHOOK_URL}",
+  "repositoryId": "12345678-1234-1234-1234-123456789abc",
+  "stressTestConfig": {
+    "enabled": false,
+    "endpoints": []
+  },
+  "pipelineConfig": {
+    "enabled": false,
+    "project": "",
+    "pipelineId": 0
+  },
+  "pollingInterval": 5,
+  "maxRetries": 2
+}

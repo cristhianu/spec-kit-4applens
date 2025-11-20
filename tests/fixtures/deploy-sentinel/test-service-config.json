@@ -1,0 +1,126 @@
+{
+  "description": "Valid configuration examples for testing",
+  "configs": {
+    "minimal_config": {
+      "serviceGroupName": "TestServiceGroup",
+      "serviceId": "test-service-001",
+      "stageMapName": "TestStageMap",
+      "environment": "Test"
+    },
+    "full_config": {
+      "serviceGroupName": "TestServiceGroup",
+      "serviceId": "test-service-001",
+      "stageMapName": "TestStageMap",
+      "environment": "Test",
+      "selectionScope": {
+        "subscriptions": ["sub-12345-abc"],
+        "regions": ["WestUS2", "EastUS"]
+      },
+      "exclusionScope": {
+        "regions": ["CentralUS"]
+      },
+      "teamsWebhookUrl": "https://example.webhook.office.com/webhookb2/test-webhook",
+      "stressTestConfig": {
+        "enabled": true,
+        "endpoints": [
+          {
+            "url": "https://test-api.example.com/health",
+            "method": "GET",
+            "expectedStatus": 200,
+            "maxLatencyMs": 500,
+            "requestsPerSecond": 100,
+            "durationSeconds": 60
+          },
+          {
+            "url": "https://test-api.example.com/api/data",
+            "method": "POST",
+            "expectedStatus": 201,
+            "maxLatencyMs": 1000,
+            "requestsPerSecond": 50,
+            "durationSeconds": 120,
+            "body": "{\"test\": true}",
+            "headers": {
+              "Content-Type": "application/json",
+              "X-Test-Header": "value"
+            }
+          }
+        ]
+      },
+      "pipelineConfig": {
+        "enabled": true,
+        "project": "TestProject",
+        "pipelineId": 42,
+        "parameters": {
+          "environment": "Test",
+          "deploymentType": "automated"
+        }
+      },
+      "pollingInterval": 30,
+      "maxRetries": 3
+    },
+    "env_var_substitution_config": {
+      "serviceGroupName": "TestServiceGroup",
+      "serviceId": "test-service-001",
+      "stageMapName": "TestStageMap",
+      "environment": "Test",
+      "teamsWebhookUrl": "${TEAMS_WEBHOOK_URL}",
+      "pipelineConfig": {
+        "enabled": true,
+        "project": "${ADO_PROJECT_NAME}",
+        "pipelineId": 42
+      }
+    },
+    "stress_test_only_config": {
+      "serviceGroupName": "TestServiceGroup",
+      "serviceId": "test-service-001",
+      "stageMapName": "TestStageMap",
+      "environment": "Test",
+      "stressTestConfig": {
+        "enabled": true,
+        "endpoints": [
+          {
+            "url": "https://test-api.example.com/health",
+            "method": "GET",
+            "expectedStatus": 200,
+            "maxLatencyMs": 500,
+            "requestsPerSecond": 100,
+            "durationSeconds": 60
+          }
+        ]
+      },
+      "pipelineConfig": {
+        "enabled": false
+      }
+    },
+    "invalid_missing_required": {
+      "serviceGroupName": "TestServiceGroup",
+      "stageMapName": "TestStageMap"
+    },
+    "invalid_empty_strings": {
+      "serviceGroupName": "",
+      "serviceId": "",
+      "stageMapName": "TestStageMap",
+      "environment": "Test"
+    },
+    "invalid_wrong_types": {
+      "serviceGroupName": "TestServiceGroup",
+      "serviceId": "test-service-001",
+      "stageMapName": "TestStageMap",
+      "environment": "Test",
+      "pollingInterval": "not-a-number",
+      "maxRetries": "three"
+    }
+  },
+  "environment_variables": {
+    "TEAMS_WEBHOOK_URL": "https://example.webhook.office.com/webhookb2/from-env-var",
+    "ADO_PROJECT_NAME": "TestProjectFromEnv"
+  },
+  "notes": [
+    "minimal_config: Only required parameters for basic usage",
+    "full_config: All parameters populated for comprehensive testing",
+    "env_var_substitution_config: Tests environment variable substitution with ${VAR_NAME} syntax",
+    "stress_test_only_config: Stress testing enabled, pipeline disabled",
+    "invalid_*: Configurations for validation error testing",
+    "Configuration validation should enforce required parameters and data types"
+  ]
+}

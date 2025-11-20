@@ -1,0 +1,104 @@
+{
+  "description": "Mock Azure DevOps MCP Server responses for contract testing",
+  "responses": {
+    "create_branch_success": {
+      "branchName": "features/deploy-sentinel-test-branch",
+      "repositoryId": "repo-12345",
+      "commitId": "abc123def456",
+      "createdAt": "2025-01-15T10:35:00Z",
+      "createdBy": "deploy-sentinel@example.com",
+      "url": "https://dev.azure.com/org/project/_git/repo?version=GBfeatures/deploy-sentinel-test-branch"
+    },
+    "create_branch_failure": {
+      "error": "BranchAlreadyExists",
+      "message": "Branch 'features/deploy-sentinel-test-branch' already exists in repository 'repo-12345'",
+      "statusCode": 409
+    },
+    "run_pipeline_success": {
+      "runId": 98765,
+      "pipelineId": 42,
+      "state": "Running",
+      "result": null,
+      "createdDate": "2025-01-15T12:05:00Z",
+      "finishedDate": null,
+      "url": "https://dev.azure.com/org/project/_build/results?buildId=98765"
+    },
+    "run_pipeline_failure": {
+      "error": "PipelineNotFound",
+      "message": "Pipeline with ID '9999' not found in project 'TestProject'",
+      "statusCode": 404
+    },
+    "get_pipeline_status_running": {
+      "runId": 98765,
+      "pipelineId": 42,
+      "state": "Running",
+      "result": null,
+      "createdDate": "2025-01-15T12:05:00Z",
+      "finishedDate": null,
+      "sourceBranch": "refs/heads/features/deploy-sentinel-test-branch"
+    },
+    "get_pipeline_status_succeeded": {
+      "runId": 98765,
+      "pipelineId": 42,
+      "state": "Completed",
+      "result": "Succeeded",
+      "createdDate": "2025-01-15T12:05:00Z",
+      "finishedDate": "2025-01-15T12:15:00Z",
+      "sourceBranch": "refs/heads/features/deploy-sentinel-test-branch"
+    },
+    "get_pipeline_status_failed": {
+      "runId": 98765,
+      "pipelineId": 42,
+      "state": "Completed",
+      "result": "Failed",
+      "createdDate": "2025-01-15T12:05:00Z",
+      "finishedDate": "2025-01-15T12:10:00Z",
+      "sourceBranch": "refs/heads/features/deploy-sentinel-test-branch",
+      "errorMessage": "Build step 'Run stress tests' failed with exit code 1"
+    },
+    "list_repositories": [
+      {
+        "id": "repo-12345",
+        "name": "TestRepository",
+        "projectName": "TestProject",
+        "defaultBranch": "refs/heads/main",
+        "url": "https://dev.azure.com/org/project/_git/repo"
+      }
+    ],
+    "get_repository_branches": [
+      {
+        "name": "refs/heads/main",
+        "objectId": "def789ghi012",
+        "creator": {
+          "displayName": "System",
+          "uniqueName": "system@example.com"
+        }
+      },
+      {
+        "name": "refs/heads/features/deploy-sentinel-test-branch",
+        "objectId": "abc123def456",
+        "creator": {
+          "displayName": "Deploy Sentinel",
+          "uniqueName": "deploy-sentinel@example.com"
+        }
+      }
+    ],
+    "bearer_token_auth_success": {
+      "tokenType": "Bearer",
+      "expiresIn": 3600,
+      "scope": "vso.code_write vso.build_execute"
+    },
+    "bearer_token_auth_failure": {
+      "error": "Unauthorized",
+      "message": "Personal Access Token expired or invalid",
+      "statusCode": 401
+    }
+  },
+  "notes": [
+    "These mocks represent typical Azure DevOps MCP Server responses",
+    "Contract tests should verify the script handles each scenario correctly",
+    "Pipeline states: NotStarted, Running, Completed",
+    "Pipeline results: Succeeded, Failed, Canceled, PartiallySucceeded",
+    "Branch names follow Azure DevOps ref format: refs/heads/{branchName}"
+  ]
+}

@@ -1,0 +1,137 @@
+{
+  "description": "Mock EV2 MCP Server responses for contract testing",
+  "responses": {
+    "start_rollout_success": {
+      "rolloutId": "test-rollout-12345-abc",
+      "serviceGroupName": "TestServiceGroup",
+      "serviceId": "test-service-001",
+      "status": "NotStarted",
+      "createdAt": "2025-01-15T10:30:00Z",
+      "startedAt": null,
+      "completedAt": null,
+      "message": "Rollout created successfully"
+    },
+    "start_rollout_failure": {
+      "error": "InvalidParameter",
+      "message": "Service ID 'invalid-service' not found in service group 'TestServiceGroup'",
+      "statusCode": 400
+    },
+    "get_rollout_status_not_started": {
+      "rolloutId": "test-rollout-12345-abc",
+      "status": "NotStarted",
+      "currentStage": null,
+      "completedStages": [],
+      "progress": 0,
+      "lastUpdated": "2025-01-15T10:30:00Z"
+    },
+    "get_rollout_status_in_progress": {
+      "rolloutId": "test-rollout-12345-abc",
+      "status": "InProgress",
+      "currentStage": "Stage1-WestUS2",
+      "completedStages": [],
+      "progress": 15,
+      "lastUpdated": "2025-01-15T10:35:00Z",
+      "stageDetails": {
+        "stageName": "Stage1-WestUS2",
+        "status": "Running",
+        "startedAt": "2025-01-15T10:31:00Z",
+        "resourcesDeployed": 12,
+        "totalResources": 45
+      }
+    },
+    "get_rollout_status_stage_complete": {
+      "rolloutId": "test-rollout-12345-abc",
+      "status": "InProgress",
+      "currentStage": "Stage2-EastUS",
+      "completedStages": ["Stage1-WestUS2"],
+      "progress": 35,
+      "lastUpdated": "2025-01-15T11:00:00Z",
+      "stageDetails": {
+        "stageName": "Stage2-EastUS",
+        "status": "Running",
+        "startedAt": "2025-01-15T11:00:00Z",
+        "resourcesDeployed": 5,
+        "totalResources": 50
+      }
+    },
+    "get_rollout_status_completed": {
+      "rolloutId": "test-rollout-12345-abc",
+      "status": "Completed",
+      "currentStage": null,
+      "completedStages": ["Stage1-WestUS2", "Stage2-EastUS", "Stage3-Global"],
+      "progress": 100,
+      "lastUpdated": "2025-01-15T12:00:00Z",
+      "completedAt": "2025-01-15T12:00:00Z"
+    },
+    "get_rollout_status_failed": {
+      "rolloutId": "test-rollout-12345-abc",
+      "status": "Failed",
+      "currentStage": "Stage2-EastUS",
+      "completedStages": ["Stage1-WestUS2"],
+      "progress": 40,
+      "lastUpdated": "2025-01-15T11:30:00Z",
+      "failedAt": "2025-01-15T11:30:00Z",
+      "errorMessage": "Deployment validation failed: Resource quota exceeded in region EastUS"
+    },
+    "get_rollout_status_cancelled": {
+      "rolloutId": "test-rollout-12345-abc",
+      "status": "Cancelled",
+      "currentStage": "Stage1-WestUS2",
+      "completedStages": [],
+      "progress": 10,
+      "lastUpdated": "2025-01-15T10:40:00Z",
+      "cancelledAt": "2025-01-15T10:40:00Z",
+      "cancelledBy": "user@example.com"
+    },
+    "get_latest_rollouts": [
+      {
+        "rolloutId": "rollout-001",
+        "serviceGroupName": "TestServiceGroup",
+        "serviceId": "test-service-001",
+        "status": "Completed",
+        "createdAt": "2025-01-14T08:00:00Z",
+        "completedAt": "2025-01-14T10:30:00Z"
+      },
+      {
+        "rolloutId": "rollout-002",
+        "serviceGroupName": "TestServiceGroup",
+        "serviceId": "test-service-001",
+        "status": "InProgress",
+        "createdAt": "2025-01-15T10:30:00Z",
+        "completedAt": null
+      }
+    ],
+    "get_artifact_versions": [
+      {
+        "artifactId": "artifact-12345",
+        "version": "1.2.3",
+        "createdAt": "2025-01-15T09:00:00Z",
+        "createdBy": "build-system",
+        "isLatest": true
+      },
+      {
+        "artifactId": "artifact-12345",
+        "version": "1.2.2",
+        "createdAt": "2025-01-14T15:00:00Z",
+        "createdBy": "build-system",
+        "isLatest": false
+      }
+    ],
+    "bearer_token_auth_success": {
+      "tokenType": "Bearer",
+      "expiresIn": 3600,
+      "scope": "EV2.Rollout.Read EV2.Rollout.Write"
+    },
+    "bearer_token_auth_failure": {
+      "error": "Unauthorized",
+      "message": "Invalid or expired credentials",
+      "statusCode": 401
+    }
+  },
+  "notes": [
+    "These mocks represent typical EV2 MCP Server responses",
+    "Contract tests should verify the script handles each scenario correctly",
+    "Status values: NotStarted, InProgress, Completed, Failed, Cancelled",
+    "Stage completion is detected when currentStage changes or status becomes Completed"
+  ]
+}
